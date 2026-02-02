@@ -3,39 +3,70 @@ title: "Quickstart"
 description: "Start accepting payments with MeetPay in minutes"
 ---
 
-## Prerequisites
+## 1. Get your API Keys
 
-Before you begin, ensure you have:
+To start using MeetPay, you need an active merchant account. Once logged in, you can generate your **Production** and **Sandbox** API keys from the [Dashboard](https://meet.briq.tz).
 
-1. A MeetPay Merchant Account.
-2. Your API Key (available in your dashboard).
+## 2. Authenticate your requests
 
-## Making your first request
+All API requests must include your API key in the `Authorization` header.
 
-You can check your integration by fetching your merchant profile.
+```bash
+Authorization: Bearer <your_api_key>
+```
+
+## 3. Make your first request
+
+Verify your connection by fetching your merchant profile and balance.
 
 <CodeGroup>
 ```bash cURL
-curl "https://meet.briq.tz/api/v1/merchants/me" \
-  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json"
+```
+
+```javascript Node.js
+const axios = require('axios');
+
+axios.get('https://meet.briq.tz/api/v1/merchants/me/balance', {
+  headers: {
+    'Authorization': 'Bearer YOUR_API_KEY',
+    'Content-Type': 'application/json'
+  }
+})
+.then(response => console.log(response.data))
+.catch(error => console.error(error));
 ```
 </CodeGroup>
+
+## Supported Networks
+
+MeetPay supports all major mobile money networks in Tanzania:
+
+| Network | Type |
+| :--- | :--- |
+| **Vodacom** | M-Pesa |
+| **Tigo** | Tigo Pesa |
+| **Airtel** | Airtel Money |
+| **Halotel** | Halopesa |
+| **TTCL** | T-Pesa |
 
 ## Next Steps
 
 <CardGroup cols={2}>
   <Card
-    title="Create a Payment"
-    icon="money-bill"
+    title="Collect Payments"
+    icon="hand-holding-dollar"
     href="/api-reference/payments/create"
   >
-    Learn how to initiate Mobile Money and Card payments.
+    Learn how to initiate Mobile Money, Card, and QR payments.
   </Card>
   <Card
-    title="Manage Payouts"
+    title="Send Payouts"
     icon="money-bill-transfer"
     href="/api-reference/payouts/create"
   >
-    Automate your disbursements.
+    Automate your disbursements to any mobile wallet.
   </Card>
 </CardGroup>

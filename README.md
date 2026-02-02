@@ -1,43 +1,27 @@
-# Mintlify Starter Kit
+# MeetPay Documentation
 
-Use the starter kit to get your docs deployed and ready to customize.
+This repository contains the official documentation for the MeetPay API.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## Local Development
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+To preview the documentation locally, you need the [Mintlify CLI](https://www.npmjs.com/package/mint).
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+1. Install the CLI:
+   ```bash
+   npm i -g mint
+   ```
 
-## Development
+2. Run the development server:
+   ```bash
+   mint dev
+   ```
 
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
+3. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-```
-npm i -g mint
-```
+## Deployment
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
+Changes pushed to the `main` branch are automatically deployed to our documentation portal.
 
-```
-mint dev
-```
+## Contact
 
-View your local preview at `http://localhost:3000`.
-
-## Publishing changes
-
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
-
-## Need help?
-
-### Troubleshooting
-
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
-
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+For technical support, please contact [support@meetpay.africa](mailto:support@meetpay.africa).
