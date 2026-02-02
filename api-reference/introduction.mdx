@@ -1,33 +1,79 @@
 ---
 title: 'Introduction'
-description: 'Example section for showcasing API endpoints'
+description: 'Documentation for MeetPay Merchant Integration API'
 ---
-
-<Note>
-  If you're not looking to build API reference documentation, you can delete
-  this section by removing the api-reference folder.
-</Note>
 
 ## Welcome
 
-There are two ways to build API documentation: [OpenAPI](https://mintlify.com/docs/api-playground/openapi/setup) and [MDX components](https://mintlify.com/docs/api-playground/mdx/configuration). For the starter kit, we are using the following OpenAPI specification.
+Welcome to the MeetPay Merchant Integration API documentation. This API allows merchants to integrate MeetPay into their systems to collect payments and disburse payouts.
 
 <Card
-  title="Plant Store Endpoints"
-  icon="leaf"
-  href="https://github.com/mintlify/starter/blob/main/api-reference/openapi.json"
+  title="MeetPay API Spec"
+  icon="code"
+  href="/api-reference/openapi.json"
 >
   View the OpenAPI specification file
 </Card>
 
 ## Authentication
 
-All API endpoints are authenticated using Bearer tokens and picked up from the specification file.
+All API endpoints are authenticated using a Bearer Token (your API Key). You **must** include your API key in the `Authorization` header of each request, prefixed with `Bearer `.
 
-```json
-"security": [
-  {
-    "bearerAuth": []
-  }
-]
+```http
+Authorization: Bearer <your_api_key>
 ```
+
+> [!IMPORTANT]
+> **Why am I getting a 401 in the documentation?**
+> 1. **Wrong Server:** Ensure you have selected the correct environment (e.g., `http://localhost:8081`) from the server dropdown in the interactive playground. Your API key is environment-specific.
+> 2. **Double Prefixing:** In the "Try It" feature, enter **only** your raw API key. Do not include the `Bearer ` prefix yourself, as the system adds it automatically.
+> 3. **Direct Requests:** In your code, you **must** include the `Bearer ` prefix (e.g., `Authorization: Bearer <key>`).
+
+## Idempotency
+
+Idempotency ensures that a specific operation is only performed once, even if you retry the request (e.g., due to a network timeout). This is mandatory for operations that create resources, such as creating a payment.
+
+### API Key vs Idempotency Key
+
+| Feature | API Key | Idempotency-Key |
+| :--- | :--- | :--- |
+| **Header Name** | `Authorization` | `Idempotency-Key` |
+| **Purpose** | Authentication (Who you are) | Duplicate Prevention (Request uniqueness) |
+| **Format** | `Bearer <key>` | Any unique string (UUID recommended) |
+| **Lifespan** | Long-term (Permanent) | Single Request (Per Transaction) |
+| **Required?** | Yes, for all private endpoints | Mandatory for `POST /api/v1/payments` |
+
+### Auto-generating the Key
+
+You should generate a new, unique key (usually a UUID) for every new payment you create. If you retry a request with the same `Idempotency-Key`, the API will return the existing transaction instead of creating a new one.
+
+<Tabs>
+  <Tab title="Node.js">
+    ```javascript
+    const crypto = require('crypto');
+    const idempotencyKey = crypto.randomUUID();
+    ```
+  </Tab>
+  <Tab title="Python">
+    ```python
+    import uuid
+    idempotency_key = str(uuid.uuid4())
+    ```
+  </Tab>
+  <Tab title="Go">
+    ```go
+    import "github.com/google/uuid"
+    idempotencyKey := uuid.New().String()
+    ```
+  </Tab>
+  <Tab title="PHP">
+    ```php
+    $idempotencyKey = bin2hex(random_bytes(16));
+    // OR using a library like ramsey/uuid
+    ```
+  </Tab>
+</Tabs>
+
+<Tip>
+  In **Postman**, you can use `{{$guid}}` in the header value to automatically generate a unique UUID for every request.
+</Tip>

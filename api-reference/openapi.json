@@ -1,16 +1,18 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "OpenAPI Plant Store",
-    "description": "A sample API that uses a plant store as an example to demonstrate features in the OpenAPI specification",
-    "license": {
-      "name": "MIT"
-    },
+    "title": "MeetPay Merchant Integration API",
+    "description": "Official API for merchants integrating MeetPay into their systems.",
     "version": "1.0.0"
   },
   "servers": [
     {
-      "url": "http://sandbox.mintlify.com"
+      "url": "https://meet.briq.tz",
+      "description": "Production Environment"
+    },
+    {
+      "url": "http://localhost:8081",
+      "description": "Local Development (Test against local server)"
     }
   ],
   "security": [
@@ -19,76 +21,17 @@
     }
   ],
   "paths": {
-    "/plants": {
+    "/api/v1/merchants/me": {
       "get": {
-        "description": "Returns all plants from the system that the user has access to",
-        "parameters": [
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "The maximum number of results to return",
-            "schema": {
-              "type": "integer",
-              "format": "int32"
-            }
-          }
-        ],
+        "summary": "Get Profile",
+        "description": "Retrieves your active merchant profile details including balance and settings.",
         "responses": {
           "200": {
-            "description": "Plant response",
+            "description": "Merchant profile retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Plant"
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "description": "Creates a new plant in the store",
-        "requestBody": {
-          "description": "Plant to add to the store",
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/NewPlant"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "plant response",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Plant"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "unexpected error",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/MerchantProfile"
                 }
               }
             }
@@ -96,121 +39,429 @@
         }
       }
     },
-    "/plants/{id}": {
-      "delete": {
-        "description": "Deletes a single plant based on the ID supplied",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "description": "ID of plant to delete",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
+    "/api/v1/merchants/me/balance": {
+      "get": {
+        "summary": "Get Balance",
+        "description": "Retrieves the current merchant balance.",
         "responses": {
-          "204": {
-            "description": "Plant deleted",
-            "content": {}
-          },
-          "400": {
-            "description": "unexpected error",
+          "200": {
+            "description": "Balance retrieved successfully",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/Balance"
                 }
               }
             }
           }
         }
       }
-    }
-  },
-  "webhooks": {
-    "/plant/webhook": {
+    },
+    "/api/v1/payments": {
+      "get": {
+        "summary": "List Payments",
+        "description": "Retrieve a list of payments with pagination.",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of payments",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Payment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
-        "description": "Information about a new plant added to the store",
+        "summary": "Create Payment",
+        "description": "Initiate a payment. Supports Mobile Money, Card, and Dynamic QR.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "123e4567-e89b-12d3-a456-426614174000"
+            },
+            "description": "A unique UUID to prevent duplicate transactions. Retrying a request with the same key will return the previous result."
+          }
+        ],
         "requestBody": {
-          "description": "Plant added to the store",
+          "required": true,
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/NewPlant"
+                "$ref": "#/components/schemas/CreatePaymentRequest"
+              },
+              "examples": {
+                "mobile": {
+                  "summary": "Mobile Money",
+                  "value": {
+                    "amount": 5000.0,
+                    "currency": "TZS",
+                    "type": "mobile",
+                    "phone": "255700000000",
+                    "network": "AIRTEL",
+                    "customer": {
+                      "firstname": "John",
+                      "lastname": "Doe",
+                      "email": "john.doe@example.com"
+                    },
+                    "reference": "ORDER_12345",
+                    "metadata": {
+                      "item_id": "PROD_001"
+                    }
+                  }
+                },
+                "card": {
+                  "summary": "Card Payment",
+                  "value": {
+                    "amount": 5000.0,
+                    "currency": "TZS",
+                    "type": "card",
+                    "phone": "255700000000",
+                    "customer": {
+                      "firstname": "John",
+                      "lastname": "Doe",
+                      "email": "john.doe@example.com"
+                    },
+                    "reference": "ORDER_123456",
+                    "metadata": {
+                      "item_id": "PROD_002"
+                    }
+                  }
+                },
+                "qr": {
+                  "summary": "Dynamic QR",
+                  "value": {
+                    "amount": 5000.0,
+                    "currency": "TZS",
+                    "type": "dynamic-qr",
+                    "phone": "255700000000",
+                    "customer": {
+                      "firstname": "John",
+                      "lastname": "Doe",
+                      "email": "john.doe@example.com"
+                    },
+                    "reference": "ORDER_123457",
+                    "metadata": {
+                      "item_id": "PROD_003"
+                    }
+                  }
+                }
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Return a 200 status to indicate that the data was received successfully"
+            "description": "Payment created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payments/{id}": {
+      "get": {
+        "summary": "Get Payment Status",
+        "description": "Retrieves the status and details of a specific payment.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Payment details",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Payment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payouts": {
+      "post": {
+        "summary": "Create Payout",
+        "description": "Transfer funds from your MeetPay balance to a recipient.",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "example": "123e4567-e89b-12d3-a456-426614174000"
+            },
+            "description": "A unique UUID to prevent duplicate transactions. Retrying a request with the same key will return the previous result."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePayoutRequest"
+              },
+              "examples": {
+                "standard": {
+                  "summary": "Standard Payout",
+                  "value": {
+                    "amount": 20000.0,
+                    "currency": "TZS",
+                    "channel": "mobile",
+                    "phone": "255700000000",
+                    "network": "VODACOM",
+                    "reference": "PAYOUT_001"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Payout initiated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PayoutResponse"
+                }
+              }
+            }
           }
         }
       }
     }
   },
   "components": {
-    "schemas": {
-      "Plant": {
-        "required": [
-          "name"
-        ],
-        "type": "object",
-        "properties": {
-          "name": {
-            "description": "The name of the plant",
-            "type": "string"
-          },
-          "tag": {
-            "description": "Tag to specify the type",
-            "type": "string"
-          }
-        }
-      },
-      "NewPlant": {
-        "allOf": [
-          {
-            "$ref": "#/components/schemas/Plant"
-          },
-          {
-            "required": [
-              "id"
-            ],
-            "type": "object",
-            "properties": {
-              "id": {
-                "description": "Identification number of the plant",
-                "type": "integer",
-                "format": "int64"
-              }
-            }
-          }
-        ]
-      },
-      "Error": {
-        "required": [
-          "error",
-          "message"
-        ],
-        "type": "object",
-        "properties": {
-          "error": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "message": {
-            "type": "string"
-          }
-        }
-      }
-    },
     "securitySchemes": {
       "bearerAuth": {
         "type": "http",
-        "scheme": "bearer"
+        "scheme": "bearer",
+        "description": "API key obtained from the merchant dashboard. When using the 'Try It' feature, enter only the key—the 'Bearer ' prefix is added automatically. For direct API calls, the 'Authorization: Bearer <key>' format is mandatory."
+      }
+    },
+    "schemas": {
+      "MerchantProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "Balance": {
+        "type": "object",
+        "properties": {
+          "available": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "properties": {
+          "firstname": {
+            "type": "string"
+          },
+          "lastname": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePaymentRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "type",
+          "customer"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "TZS"
+            ],
+            "default": "TZS"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "mobile",
+              "card",
+              "dynamic-qr"
+            ]
+          },
+          "phone": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "VODACOM",
+              "AIRTEL",
+              "TIGO",
+              "HALOTEL",
+              "TTCL"
+            ]
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "Payment": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string"
+          }
+        }
+      },
+      "PaymentResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "payment_url": {
+            "type": "string"
+          },
+          "qr_code": {
+            "type": "string"
+          }
+        }
+      },
+      "CreatePayoutRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "channel",
+          "phone"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number"
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "TZS"
+            ],
+            "default": "TZS"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "mobile",
+              "bank"
+            ]
+          },
+          "phone": {
+            "type": "string"
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "VODACOM",
+              "AIRTEL",
+              "TIGO",
+              "HALOTEL",
+              "TTCL"
+            ]
+          },
+          "reference": {
+            "type": "string"
+          }
+        }
+      },
+      "PayoutResponse": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          }
+        }
       }
     }
   }
