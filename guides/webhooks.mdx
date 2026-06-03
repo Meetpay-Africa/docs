@@ -1,0 +1,102 @@
+---
+title: "Webhooks"
+description: "Signed status events"
+---
+
+MeetPay `POST`s JSON to your URL when transaction status changes.
+
+## URL resolution
+
+| Source | Applies to |
+| :--- | :--- |
+| `webhook_url` / `callback_url` on `POST /api/v1/payments` | That payment (overrides merchant defaults) |
+| `webhook_url` / `callback_url` on `PUT /api/v1/merchants/me` | Merchant default (used when omitted on the request) |
+| Dashboard webhook settings | Same fields as merchant profile |
+
+**Payments:** send URLs on the create body (typical). **Payouts:** merchant defaults only (no per-payout URL on the API).
+
+Priority: per-transaction value, then merchant default, then no delivery.
+
+## `webhook_url` vs `callback_url`
+
+| Field | When MeetPay calls |
+| :--- | :--- |
+| `webhook_url` | Every status change |
+| `callback_url` | Terminal status only (completed, failed, expired, cancelled) |
+
+Same payload signing for both. Most integrations use `webhook_url` only.
+
+## Payment example
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payments" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{
+    "amount": 5000,
+    "currency": "TZS",
+    "type": "mobile",
+    "phone": "255700000000",
+    "network": "AIRTEL",
+    "customer": {"firstname": "John", "lastname": "Doe", "email": "john@example.com"},
+    "reference": "ORDER_123",
+    "webhook_url": "https://api.example.com/meetpay/webhooks",
+    "callback_url": "https://api.example.com/meetpay/callback"
+  }'
+```
+
+Optional: set defaults once via [Merchant default URLs](/guides/merchants/merchant-default-urls) instead of sending them on every payment.
+
+## Payload
+
+```json
+{
+  "version": "1.0",
+  "event": "payment.completed",
+  "event_id": "uuid",
+  "transaction_id": "uuid",
+  "merchant_reference": "ORDER_123",
+  "data": {
+    "amount": 5000,
+    "currency": "TZS",
+    "status": "completed",
+    "previous_status": "processing",
+    "payment_type": "mobile",
+    "provider_reference": "ext_ref_123"
+  },
+  "metadata": {},
+  "timestamp": "2026-06-03T12:00:00Z"
+}
+```
+
+Deduplicate with `event_id`.
+
+## Signature
+
+| Header | Value |
+| :--- | :--- |
+| `X-MeetPay-Signature` | `sha256=<hex>` |
+| `X-MeetPay-Timestamp` | Unix seconds |
+| `X-MeetPay-Delivery-ID` | Delivery attempt id |
+
+Sign input: `{timestamp}.{raw_body}`. Key from dashboard webhook settings.
+
+```javascript
+const crypto = require('crypto');
+
+function verify(signatureHeader, timestamp, rawBody, signingKey) {
+  const expected = crypto
+    .createHmac('sha256', signingKey)
+    .update(`${timestamp}.${rawBody}`)
+    .digest('hex');
+  const received = signatureHeader.replace('sha256=', '');
+  return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received));
+}
+```
+
+Return `2xx`. Retries on failure.
+
+## Polling fallback
+
+`GET /api/v1/payments/{id}` if an event was missed.

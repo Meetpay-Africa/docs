@@ -2,7 +2,7 @@
   "openapi": "3.1.0",
   "info": {
     "title": "MeetPay Merchant Integration API",
-    "description": "Official API for merchants integrating MeetPay into their systems.",
+    "description": "MeetPay Developer API for server-to-server integration. Dashboard-only operations (API key management, detailed ledger, settlements) are excluded.",
     "version": "1.0.0"
   },
   "servers": [
@@ -32,6 +32,31 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/MerchantProfile"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "Update profile",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateMerchantRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
                 }
               }
             }
@@ -272,6 +297,189 @@
             }
           }
         }
+      },
+      "get": {
+        "summary": "List payouts",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/ping": {
+      "get": {
+        "summary": "Ping",
+        "description": "Validate API key and return merchant context.",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/payouts/{id}": {
+      "get": {
+        "summary": "Get payout",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/refunds": {
+      "get": {
+        "summary": "List refunds",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "per_page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          },
+          {
+            "name": "transaction_id",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Create refund",
+        "parameters": [
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/refunds/{id}": {
+      "get": {
+        "summary": "Get refund",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          }
+        }
       }
     }
   },
@@ -280,7 +488,7 @@
       "bearerAuth": {
         "type": "http",
         "scheme": "bearer",
-        "description": "API key obtained from the merchant dashboard. When using the 'Try It' feature, enter only the key—the 'Bearer ' prefix is added automatically. For direct API calls, the 'Authorization: Bearer <key>' format is mandatory."
+        "description": "API key obtained from the merchant dashboard. When using the 'Try It' feature, enter only the key\u2014the 'Bearer ' prefix is added automatically. For direct API calls, the 'Authorization: Bearer <key>' format is mandatory."
       }
     },
     "schemas": {
@@ -348,7 +556,8 @@
               "mobile",
               "card",
               "dynamic-qr"
-            ]
+            ],
+            "description": "Use mobile for collections today. card and dynamic-qr are not enabled for new collections yet."
           },
           "phone": {
             "type": "string"
@@ -368,6 +577,14 @@
           },
           "reference": {
             "type": "string"
+          },
+          "webhook_url": {
+            "type": "string",
+            "description": "Per-payment webhook URL. Overrides merchant webhook_url when set."
+          },
+          "callback_url": {
+            "type": "string",
+            "description": "Per-payment callback URL for terminal status. Overrides merchant callback_url when set."
           },
           "metadata": {
             "type": "object"
@@ -460,6 +677,62 @@
           },
           "status": {
             "type": "string"
+          }
+        }
+      },
+      "UpdateMerchantRequest": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "callback_url": {
+            "type": "string"
+          },
+          "webhook_url": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateRefundRequest": {
+        "type": "object",
+        "required": [
+          "transaction_id",
+          "amount",
+          "reason"
+        ],
+        "properties": {
+          "transaction_id": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
+          },
+          "reason": {
+            "type": "string",
+            "enum": [
+              "customer_request",
+              "fraud",
+              "duplicate",
+              "other"
+            ]
+          }
+        }
+      },
+      "Refund": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string"
+          },
+          "amount": {
+            "type": "number"
           }
         }
       }

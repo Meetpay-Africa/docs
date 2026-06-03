@@ -1,0 +1,49 @@
+<svg width="960" height="320" viewBox="0 0 960 320" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="MeetPay payments infrastructure">
+  <defs>
+    <linearGradient id="glow-emerald" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10B981" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#10B981" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="glow-blue" x1="100%" y1="100%" x2="0%" y2="0%">
+      <stop offset="0%" stop-color="#3B82F6" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#3B82F6" stop-opacity="0"/>
+    </linearGradient>
+    <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
+      <path d="M 20 0 L 0 0 0 20" fill="none" stroke="#94A3B8" stroke-opacity="0.18" stroke-width="1"/>
+    </pattern>
+    <radialGradient id="fade" cx="50%" cy="50%" r="65%">
+      <stop offset="55%" stop-color="#0F172A" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#0F172A" stop-opacity="1"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="960" height="320" rx="24" fill="#0F172A"/>
+  <rect width="960" height="320" rx="24" fill="url(#grid)"/>
+  <ellipse cx="180" cy="60" rx="220" ry="140" fill="url(#glow-emerald)"/>
+  <ellipse cx="780" cy="260" rx="240" ry="150" fill="url(#glow-blue)"/>
+  <rect width="960" height="320" rx="24" fill="url(#fade)"/>
+
+  <g transform="translate(72 96) scale(2.286)">
+    <path fill="#10B981" d="M23.2 26.4c-.9.6-2 1-3.1 1h-9.1c-2 0-3.8-1-4.8-2.7l-4.6-7.8c-1-1.7-1-3.8 0-5.5L6.1 3.7c1-1.7 2.8-2.7 4.8-2.7h9.1c1.1 0 2.2.3 3.1 1-.7.5-1.2 1-1.7 1.8l-4.6 7.8c-1 1.7-1 3.8 0 5.5l4.6 7.8c.4.7 1 1.3 1.7 1.8ZM29.4 11.4l-4-6.9-4 6.9c-1 1.7-1 3.8 0 5.5l4 6.9 4-6.9c1-1.7 1-3.8 0-5.5Z"/>
+  </g>
+
+  <text x="168" y="132" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="44" letter-spacing="-0.06em" fill="#FAFAFA">Payments infrastructure</text>
+  <text x="168" y="178" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="700" font-size="44" letter-spacing="-0.06em" fill="#10B981" font-style="italic">for East Africa</text>
+  <text x="168" y="228" font-family="Inter, ui-sans-serif, system-ui, sans-serif" font-weight="500" font-size="18" fill="#94A3B8">Collect payments, manage payouts, and scale with one integration.</text>
+
+  <rect x="640" y="72" width="256" height="176" rx="16" fill="#1E293B" fill-opacity="0.85" stroke="#334155" stroke-width="1"/>
+  <rect x="640" y="72" width="256" height="36" rx="16" fill="#334155" fill-opacity="0.5"/>
+  <circle cx="656" cy="90" r="5" fill="#475569"/>
+  <circle cx="672" cy="90" r="5" fill="#475569"/>
+  <circle cx="688" cy="90" r="5" fill="#475569"/>
+  <text x="704" y="94" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="10" fill="#94A3B8">POST /v1/payments</text>
+  <text x="656" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#60A5FA">const</text>
+  <text x="704" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#10B981"> payment</text>
+  <text x="784" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#60A5FA"> =</text>
+  <text x="656" y="156" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#F8FAFC">  meetpay.payments.create({"{"}</text>
+  <text x="672" y="180" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#60A5FA">amount</text>
+  <text x="720" y="180" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#F8FAFC">: 5000,</text>
+  <text x="672" y="204" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#60A5FA">currency</text>
+  <text x="736" y="204" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#10B981">: &apos;TZS&apos;</text>
+  <text x="656" y="228" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#F8FAFC">{"})"}</text>
+</svg>

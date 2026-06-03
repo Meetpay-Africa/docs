@@ -1,72 +1,54 @@
 ---
 title: "Quickstart"
-description: "Start accepting payments with MeetPay in minutes"
+description: "MeetPay Developer API"
 ---
 
-## 1. Get your API Keys
+MeetPay Developer API (`/api/v1/`). API key auth only. Dashboard handles keys, reports, and ledger export.
 
-To start using MeetPay, you need an active merchant account. Once logged in, you can generate your **Production** and **Sandbox** API keys from the [Dashboard](https://meet.briq.tz).
+## 1. API key
 
-## 2. Authenticate your requests
+[Dashboard](https://meet.briq.tz) → generate `sk_test_...` or `sk_live_...`.
 
-All API requests must include your API key in the `Authorization` header.
+## 2. Ping
 
-```bash
+```http
 Authorization: Bearer <your_api_key>
 ```
 
-## 3. Make your first request
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/ping" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
 
-Verify your connection by fetching your merchant profile and balance.
+## 3. Create payment
 
-<CodeGroup>
-```bash cURL
-curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
+`Idempotency-Key` required. [Idempotency](/guides/idempotency).
+
+Include `webhook_url` on the request (or set [merchant defaults](/guides/merchants/merchant-default-urls)). [Webhooks](/guides/webhooks).
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payments" \
   -H "Authorization: Bearer YOUR_API_KEY" \
-  -H "Content-Type: application/json"
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"amount":5000,"currency":"TZS","type":"mobile","phone":"255700000000","network":"AIRTEL","customer":{"firstname":"John","lastname":"Doe","email":"john@example.com"},"reference":"ORDER_123","webhook_url":"https://api.example.com/meetpay/webhooks"}'
 ```
 
-```javascript Node.js
-const axios = require('axios');
+## 4. Balance
 
-axios.get('https://meet.briq.tz/api/v1/merchants/me/balance', {
-  headers: {
-    'Authorization': 'Bearer YOUR_API_KEY',
-    'Content-Type': 'application/json'
-  }
-})
-.then(response => console.log(response.data))
-.catch(error => console.error(error));
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
-</CodeGroup>
 
-## Supported Networks
+## Networks
 
-MeetPay supports all major mobile money networks in Tanzania:
-
-| Network | Type |
+| Network | Provider |
 | :--- | :--- |
-| **Vodacom** | M-Pesa |
-| **Tigo** | Tigo Pesa |
-| **Airtel** | Airtel Money |
-| **Halotel** | Halopesa |
-| **TTCL** | T-Pesa |
+| VODACOM | M-Pesa |
+| TIGO | Tigo Pesa |
+| AIRTEL | Airtel Money |
+| HALOTEL | Halopesa |
+| TTCL | T-Pesa |
 
-## Next Steps
-
-<CardGroup cols={2}>
-  <Card
-    title="Collect Payments"
-    icon="hand-holding-dollar"
-    href="/api-reference/payments/create"
-  >
-    Learn how to initiate Mobile Money, Card, and QR payments.
-  </Card>
-  <Card
-    title="Send Payouts"
-    icon="money-bill-transfer"
-    href="/api-reference/payouts/create"
-  >
-    Automate your disbursements to any mobile wallet.
-  </Card>
-</CardGroup>
+Collections: `type: "mobile"` only for now. See [Create payment](/guides/payments/create).

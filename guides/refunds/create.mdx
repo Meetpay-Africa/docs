@@ -1,0 +1,24 @@
+---
+title: "Create refund"
+description: "POST /api/v1/refunds"
+---
+
+`POST /api/v1/refunds`
+
+| Field | Required |
+| :--- | :--- |
+| `transaction_id` | yes |
+| `amount` | yes |
+| `reason` | `customer_request`, `fraud`, `duplicate`, `other` |
+
+<Card title="API reference" icon="code" href="/api-reference/refunds/create">
+  POST /api/v1/refunds
+</Card>
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/refunds" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"transaction_id":"MEET-xxx","amount":5000,"reason":"customer_request"}'
+```

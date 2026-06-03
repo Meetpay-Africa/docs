@@ -1,0 +1,27 @@
+---
+title: "Create payout"
+description: "POST /api/v1/payouts"
+---
+
+`POST /api/v1/payouts`
+
+`Idempotency-Key` required. [Idempotency](/guides/idempotency).
+
+| `channel` | Fields |
+| :--- | :--- |
+| `mobile` | `phone`, `network` |
+| `bank` | See API reference |
+
+[Get balance](/guides/merchants/get-balance) first. Payout events use [merchant default URLs](/guides/merchants/merchant-default-urls) (not sent on this request).
+
+<Card title="API reference" icon="code" href="/api-reference/payouts/create">
+  POST /api/v1/payouts
+</Card>
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payouts" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"amount":20000,"currency":"TZS","channel":"mobile","phone":"255700000000","network":"VODACOM","reference":"PAYOUT_001"}'
+```

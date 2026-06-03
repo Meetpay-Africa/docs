@@ -1,0 +1,16 @@
+---
+title: "Idempotency"
+description: "Idempotency-Key header"
+---
+
+Required on:
+
+- `POST /api/v1/payments`
+- `POST /api/v1/payouts`
+- `POST /api/v1/refunds`
+
+```http
+Idempotency-Key: <uuid>
+```
+
+New UUID per new transaction. Reuse only when retrying the same request.

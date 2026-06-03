@@ -3,9 +3,12 @@
   "theme": "mint",
   "name": "MeetPay",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#10B981",
+    "light": "#34D399",
+    "dark": "#059669"
+  },
+  "fonts": {
+    "family": "Inter"
   },
   "favicon": "/favicon.svg",
   "navigation": {
@@ -16,8 +19,51 @@
           {
             "group": "Getting started",
             "pages": [
-              "index",
               "quickstart"
+            ]
+          },
+          {
+            "group": "Webhooks",
+            "pages": [
+              "guides/webhooks",
+              "guides/merchants/merchant-default-urls"
+            ]
+          },
+          {
+            "group": "Connection",
+            "pages": [
+              "guides/ping"
+            ]
+          },
+          {
+            "group": "Account",
+            "pages": [
+              "guides/merchants/get-profile",
+              "guides/merchants/get-balance"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "guides/payments/create",
+              "guides/payments/get",
+              "guides/payments/list"
+            ]
+          },
+          {
+            "group": "Payouts",
+            "pages": [
+              "guides/payouts/create",
+              "guides/payouts/get",
+              "guides/payouts/list"
+            ]
+          },
+          {
+            "group": "Refunds",
+            "pages": [
+              "guides/refunds/create",
+              "guides/refunds/get",
+              "guides/refunds/list"
             ]
           }
         ]
@@ -26,15 +72,22 @@
         "tab": "API reference",
         "groups": [
           {
-            "group": "API documentation",
+            "group": "Overview",
             "pages": [
               "api-reference/introduction"
             ]
           },
           {
-            "group": "Merchant Account",
+            "group": "Connection",
+            "pages": [
+              "api-reference/ping"
+            ]
+          },
+          {
+            "group": "Account",
             "pages": [
               "api-reference/merchants/profile",
+              "api-reference/merchants/update-profile",
               "api-reference/merchants/balance"
             ]
           },
@@ -42,14 +95,24 @@
             "group": "Payments",
             "pages": [
               "api-reference/payments/create",
-              "api-reference/payments/list",
-              "api-reference/payments/status"
+              "api-reference/payments/status",
+              "api-reference/payments/list"
             ]
           },
           {
             "group": "Payouts",
             "pages": [
-              "api-reference/payouts/create"
+              "api-reference/payouts/create",
+              "api-reference/payouts/status",
+              "api-reference/payouts/list"
+            ]
+          },
+          {
+            "group": "Refunds",
+            "pages": [
+              "api-reference/refunds/create",
+              "api-reference/refunds/status",
+              "api-reference/refunds/list"
             ]
           }
         ]

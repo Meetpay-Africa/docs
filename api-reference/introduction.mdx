@@ -1,79 +1,28 @@
 ---
 title: 'Introduction'
-description: 'Documentation for MeetPay Merchant Integration API'
+description: 'MeetPay Developer API reference'
 ---
 
-## Welcome
+`/api/v1/` with `Authorization: Bearer <api_key>`.
 
-Welcome to the MeetPay Merchant Integration API documentation. This API allows merchants to integrate MeetPay into their systems to collect payments and disburse payouts.
+Dashboard only (not in this reference): API keys, detailed ledger, settlements, bank accounts, reports, webhook testing.
+
+## Endpoints
+
+| Group | Endpoints |
+| :--- | :--- |
+| Connection | `GET /api/v1/ping` |
+| Account | `GET`, `PUT /api/v1/merchants/me`; `GET /api/v1/merchants/me/balance` |
+| Payments | `POST`, `GET /api/v1/payments`; `GET /api/v1/payments/{id}` |
+| Payouts | `POST`, `GET /api/v1/payouts`; `GET /api/v1/payouts/{id}` |
+| Refunds | `POST`, `GET /api/v1/refunds`; `GET /api/v1/refunds/{id}` |
 
 <Card
-  title="MeetPay API Spec"
+  title="OpenAPI"
   icon="code"
   href="/api-reference/openapi.json"
 >
-  View the OpenAPI specification file
+  openapi.json
 </Card>
 
-## Authentication
-
-All API endpoints are authenticated using a Bearer Token (your API Key). You **must** include your API key in the `Authorization` header of each request, prefixed with `Bearer `.
-
-```http
-Authorization: Bearer <your_api_key>
-```
-
-> [!IMPORTANT]
-> **Why am I getting a 401 in the documentation?**
-> 1. **Wrong Server:** Ensure you have selected the correct environment (e.g., `http://localhost:8081`) from the server dropdown in the interactive playground. Your API key is environment-specific.
-> 2. **Double Prefixing:** In the "Try It" feature, enter **only** your raw API key. Do not include the `Bearer ` prefix yourself, as the system adds it automatically.
-> 3. **Direct Requests:** In your code, you **must** include the `Bearer ` prefix (e.g., `Authorization: Bearer <key>`).
-
-## Idempotency
-
-Idempotency ensures that a specific operation is only performed once, even if you retry the request (e.g., due to a network timeout). This is mandatory for operations that create resources, such as creating a payment.
-
-### API Key vs Idempotency Key
-
-| Feature | API Key | Idempotency-Key |
-| :--- | :--- | :--- |
-| **Header Name** | `Authorization` | `Idempotency-Key` |
-| **Purpose** | Authentication (Who you are) | Duplicate Prevention (Request uniqueness) |
-| **Format** | `Bearer <key>` | Any unique string (UUID recommended) |
-| **Lifespan** | Long-term (Permanent) | Single Request (Per Transaction) |
-| **Required?** | Yes, for all private endpoints | Mandatory for `POST /api/v1/payments` |
-
-### Auto-generating the Key
-
-You should generate a new, unique key (usually a UUID) for every new payment you create. If you retry a request with the same `Idempotency-Key`, the API will return the existing transaction instead of creating a new one.
-
-<Tabs>
-  <Tab title="Node.js">
-    ```javascript
-    const crypto = require('crypto');
-    const idempotencyKey = crypto.randomUUID();
-    ```
-  </Tab>
-  <Tab title="Python">
-    ```python
-    import uuid
-    idempotency_key = str(uuid.uuid4())
-    ```
-  </Tab>
-  <Tab title="Go">
-    ```go
-    import "github.com/google/uuid"
-    idempotencyKey := uuid.New().String()
-    ```
-  </Tab>
-  <Tab title="PHP">
-    ```php
-    $idempotencyKey = bin2hex(random_bytes(16));
-    // OR using a library like ramsey/uuid
-    ```
-  </Tab>
-</Tabs>
-
-<Tip>
-  In **Postman**, you can use `{{$guid}}` in the header value to automatically generate a unique UUID for every request.
-</Tip>
+> **401 in Try It:** Match server to key environment. Enter raw key only (no `Bearer ` prefix in playground).

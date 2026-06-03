@@ -1,0 +1,44 @@
+---
+title: "Create payment"
+description: "POST /api/v1/payments"
+---
+
+`POST /api/v1/payments`
+
+`Idempotency-Key` required. [Idempotency](/guides/idempotency).
+
+## Body
+
+| Field | Required | Notes |
+| :--- | :--- | :--- |
+| `amount`, `currency`, `type`, `customer` | yes | |
+| `phone`, `network` | mobile | |
+| `reference`, `metadata` | no | |
+| `webhook_url` | no | Status events; overrides merchant default |
+| `callback_url` | no | Terminal status only; overrides merchant default |
+
+`type: "mobile"` with `phone` and `network`:
+
+| `network` | Provider |
+| :--- | :--- |
+| VODACOM | M-Pesa |
+| TIGO | Tigo Pesa |
+| AIRTEL | Airtel Money |
+| HALOTEL | Halopesa |
+| TTCL | T-Pesa |
+
+> `card` and `dynamic-qr` not available for new collections yet.
+
+[Webhooks](/guides/webhooks)
+
+<Card title="API reference" icon="code" href="/api-reference/payments/create">
+  POST /api/v1/payments
+</Card>
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payments" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"amount":5000,"currency":"TZS","type":"mobile","phone":"255700000000","network":"AIRTEL","customer":{"firstname":"John","lastname":"Doe","email":"john@example.com"},"reference":"ORDER_123","webhook_url":"https://api.example.com/meetpay/webhooks"}'
+```
