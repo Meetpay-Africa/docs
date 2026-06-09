@@ -46,6 +46,7 @@
             "group": "Payments",
             "pages": [
               "guides/payments/create",
+              "guides/payments/status",
               "guides/payments/get",
               "guides/payments/list"
             ]

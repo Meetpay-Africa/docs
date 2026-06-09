@@ -24,7 +24,7 @@ curl -X GET "https://meet.briq.tz/api/v1/ping" \
 
 `Idempotency-Key` required. [Idempotency](/guides/idempotency).
 
-Include `webhook_url` on the request (or set [merchant defaults](/guides/merchants/merchant-default-urls)). [Webhooks](/guides/webhooks).
+Include `webhook_url` on the request (or set [merchant defaults](/guides/merchants/merchant-default-urls)). MeetPay posts `payment.{status}` events as the payment moves from `pending` → `processing` → `completed` (or `failed` / `expired`). See [Webhooks](/guides/webhooks) and [Payment status](/guides/payments/status).
 
 ```bash
 curl -X POST "https://meet.briq.tz/api/v1/payments" \

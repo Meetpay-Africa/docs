@@ -598,7 +598,17 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "failed",
+              "cancelled",
+              "expired",
+              "partially_refunded"
+            ],
+            "description": "Normalized payment status. Status changes are delivered to webhook_url as payment.{status} events."
           },
           "amount": {
             "type": "number"
@@ -615,7 +625,17 @@
             "type": "string"
           },
           "status": {
-            "type": "string"
+            "type": "string",
+            "enum": [
+              "pending",
+              "processing",
+              "completed",
+              "failed",
+              "cancelled",
+              "expired",
+              "partially_refunded"
+            ],
+            "description": "Initial status is typically pending. Subscribe via webhook_url for lifecycle updates."
           },
           "payment_url": {
             "type": "string"

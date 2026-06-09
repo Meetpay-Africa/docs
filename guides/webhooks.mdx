@@ -1,9 +1,9 @@
 ---
 title: "Webhooks"
-description: "Signed status events"
+description: "Signed payment status events and callbacks"
 ---
 
-MeetPay `POST`s JSON to your URL when transaction status changes.
+MeetPay `POST`s JSON to your URL when a payment status changes. Use webhooks as the primary integration path; poll `GET /api/v1/payments/{id}` only as a fallback.
 
 ## URL resolution
 
@@ -13,20 +13,162 @@ MeetPay `POST`s JSON to your URL when transaction status changes.
 | `webhook_url` / `callback_url` on `PUT /api/v1/merchants/me` | Merchant default (used when omitted on the request) |
 | Dashboard webhook settings | Same fields as merchant profile |
 
-**Payments:** send URLs on the create body (typical). **Payouts:** merchant defaults only (no per-payout URL on the API).
-
-Priority: per-transaction value, then merchant default, then no delivery.
+Priority: per-payment value → merchant default → no delivery.
 
 ## `webhook_url` vs `callback_url`
 
 | Field | When MeetPay calls |
 | :--- | :--- |
-| `webhook_url` | Every status change |
-| `callback_url` | Terminal status only (completed, failed, expired, cancelled) |
+| `webhook_url` | **Every** status change (lifecycle events) |
+| `callback_url` | **Terminal status only** (`completed`, `failed`, `expired`, `cancelled`) |
 
-Same payload signing for both. Most integrations use `webhook_url` only.
+Both use the same HMAC signing. Most integrations only need `webhook_url`.
 
-## Payment example
+## Payment status lifecycle
+
+After `POST /api/v1/payments`, a payment moves through normalized statuses. MeetPay maps provider-specific values (for example Snippe/Selcom) into these states before delivering webhooks.
+
+```mermaid
+stateDiagram-v2
+    [*] --> pending: Payment created
+    pending --> processing: Provider accepts / customer action started
+    processing --> completed: Funds captured
+    processing --> failed: Provider reports failure
+    pending --> expired: Session or QR link timed out
+    pending --> cancelled: Cancelled before completion
+    processing --> cancelled: Cancelled in flight
+    completed --> partially_refunded: Refund issued (partial)
+```
+
+| Status | Terminal? | Meaning |
+| :--- | :--- | :--- |
+| `pending` | No | Created; awaiting customer action (USSD push, QR scan, card checkout) |
+| `processing` | No | Provider is actively processing the payment |
+| `completed` | Yes | Payment successful; merchant balance credited |
+| `failed` | Yes | Payment failed at the provider |
+| `cancelled` | Yes | Payment cancelled before completion |
+| `expired` | Yes | Checkout session or QR link expired (typically 30 minutes) |
+| `partially_refunded` | Yes | One or more partial refunds applied after completion |
+
+Terminal statuses never regress. Once `completed`, `failed`, `cancelled`, or `expired`, the payment will not return to `pending`.
+
+## Payment webhook events
+
+Webhooks fire on **every** transition. The `event` field is `{transaction_type}.{new_status}` — for payments:
+
+| Event | `data.status` | Typical `data.previous_status` | When it fires |
+| :--- | :--- | :--- | :--- |
+| `payment.pending` | `pending` | `""` | Payment record created |
+| `payment.processing` | `processing` | `pending` | Provider accepted the payment or customer started checkout |
+| `payment.completed` | `completed` | `processing` or `pending` | Payment captured successfully |
+| `payment.failed` | `failed` | `processing` or `pending` | Provider reported failure |
+| `payment.cancelled` | `cancelled` | `pending` or `processing` | Payment cancelled |
+| `payment.expired` | `expired` | `pending` | Session or QR link expired |
+| `payment.partially_refunded` | `partially_refunded` | `completed` | Partial refund processed |
+
+<Note>
+  Events may arrive out of order. A `payment.completed` event can arrive before `payment.processing`. Only advance your internal order status forward — never backward.
+</Note>
+
+Deduplicate with `event_id` (unique per webhook delivery, not per transaction).
+
+## Webhook payload
+
+Sent to `webhook_url` on each status change:
+
+```json
+{
+  "version": "1.0",
+  "event": "payment.completed",
+  "event_id": "d4f8a1b2-3c4d-5e6f-7a8b-9c0d1e2f3a4b",
+  "transaction_id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
+  "merchant_reference": "ORDER_123",
+  "data": {
+    "amount": 5000,
+    "currency": "TZS",
+    "status": "completed",
+    "previous_status": "processing",
+    "payment_type": "mobile",
+    "provider_reference": "EXT-20250101-001",
+    "failure_reason": null,
+    "completed_at": "2026-06-09T12:54:05Z"
+  },
+  "metadata": {
+    "order_id": "ORD-9876"
+  },
+  "timestamp": "2026-06-09T12:54:06Z"
+}
+```
+
+### Webhook fields
+
+| Field | Type | Description |
+| :--- | :--- | :--- |
+| `version` | string | Payload schema version (`"1.0"`) |
+| `event` | string | Event name, e.g. `payment.completed` |
+| `event_id` | UUID | Unique per delivery — use for deduplication |
+| `transaction_id` | UUID | MeetPay payment ID (same as `GET /api/v1/payments/{id}`) |
+| `merchant_reference` | string | Your `reference` from payment creation |
+| `data.amount` | number | Original payment amount |
+| `data.currency` | string | Currency code (`TZS`) |
+| `data.status` | string | New status after this transition |
+| `data.previous_status` | string | Status before this transition |
+| `data.payment_type` | string | `mobile`, `card`, or `dynamic-qr` |
+| `data.provider_reference` | string | Provider external reference |
+| `data.failure_reason` | string \| null | Set on `payment.failed` when available |
+| `data.completed_at` | datetime \| null | Set for terminal statuses when known |
+| `metadata` | object | Your original `metadata` echoed back |
+| `timestamp` | datetime | When MeetPay generated this notification |
+
+### Example: failure event
+
+```json
+{
+  "version": "1.0",
+  "event": "payment.failed",
+  "event_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+  "transaction_id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
+  "merchant_reference": "ORDER_123",
+  "data": {
+    "amount": 5000,
+    "currency": "TZS",
+    "status": "failed",
+    "previous_status": "processing",
+    "payment_type": "mobile",
+    "provider_reference": "EXT-20250101-001",
+    "failure_reason": "Customer declined USSD prompt",
+    "completed_at": "2026-06-09T12:54:11Z"
+  },
+  "metadata": {},
+  "timestamp": "2026-06-09T12:54:12Z"
+}
+```
+
+## Callback payload
+
+Sent to `callback_url` **once** when the payment reaches a terminal status. Simpler shape — no `event` or `previous_status`:
+
+```json
+{
+  "version": "1.0",
+  "type": "transaction.callback",
+  "transaction_id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
+  "merchant_reference": "ORDER_123",
+  "amount": 5000,
+  "currency": "TZS",
+  "status": "completed",
+  "payment_type": "mobile",
+  "provider_reference": "EXT-20250101-001",
+  "failure_reason": null,
+  "completed_at": "2026-06-09T12:54:05Z",
+  "metadata": {},
+  "timestamp": "2026-06-09T12:54:06Z"
+}
+```
+
+Deduplicate callbacks with `transaction_id` (one callback per payment).
+
+## Configure on payment create
 
 ```bash
 curl -X POST "https://meet.briq.tz/api/v1/payments" \
@@ -48,30 +190,6 @@ curl -X POST "https://meet.briq.tz/api/v1/payments" \
 
 Optional: set defaults once via [Merchant default URLs](/guides/merchants/merchant-default-urls) instead of sending them on every payment.
 
-## Payload
-
-```json
-{
-  "version": "1.0",
-  "event": "payment.completed",
-  "event_id": "uuid",
-  "transaction_id": "uuid",
-  "merchant_reference": "ORDER_123",
-  "data": {
-    "amount": 5000,
-    "currency": "TZS",
-    "status": "completed",
-    "previous_status": "processing",
-    "payment_type": "mobile",
-    "provider_reference": "ext_ref_123"
-  },
-  "metadata": {},
-  "timestamp": "2026-06-03T12:00:00Z"
-}
-```
-
-Deduplicate with `event_id`.
-
 ## Signature
 
 | Header | Value |
@@ -86,6 +204,10 @@ Sign input: `{timestamp}.{raw_body}`. Key from dashboard webhook settings.
 const crypto = require('crypto');
 
 function verify(signatureHeader, timestamp, rawBody, signingKey) {
+  // Replay protection: reject events older than 5 minutes
+  if (Math.abs(Date.now() / 1000 - parseInt(timestamp, 10)) > 300) {
+    return false;
+  }
   const expected = crypto
     .createHmac('sha256', signingKey)
     .update(`${timestamp}.${rawBody}`)
@@ -95,8 +217,20 @@ function verify(signatureHeader, timestamp, rawBody, signingKey) {
 }
 ```
 
-Return `2xx`. Retries on failure.
+## Handler checklist
 
-## Polling fallback
+1. Verify the signature on the **raw request body** (not re-serialized JSON).
+2. Return `2xx` within 30 seconds — process business logic asynchronously.
+3. Deduplicate webhooks by `event_id`; deduplicate callbacks by `transaction_id`.
+4. Confirm `data.amount`, `data.currency`, and `merchant_reference` match your order.
+5. Fulfill on `payment.completed`; release inventory / notify customer on `payment.failed` or `payment.expired`.
 
-`GET /api/v1/payments/{id}` if an event was missed.
+## Retries and polling fallback
+
+| Scenario | Behavior |
+| :--- | :--- |
+| Your endpoint returns non-2xx or times out | MeetPay retries via background worker |
+| Retries exhausted | Delivery moves to dead-letter queue; merchant notified |
+| Missed webhook | `GET /api/v1/payments/{id}` or `POST /api/v1/payments/{id}/refresh` |
+
+See [Get payment status](/guides/payments/status) for polling and status field reference.

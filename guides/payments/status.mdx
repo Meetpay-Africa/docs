@@ -1,0 +1,98 @@
+---
+title: "Payment status"
+description: "Statuses, webhook events, and polling fallback"
+---
+
+Track payment outcomes via [Webhooks](/guides/webhooks) (recommended) or by polling `GET /api/v1/payments/{id}`.
+
+## Status values
+
+| Status | Terminal | Description |
+| :--- | :--- | :--- |
+| `pending` | No | Payment created; waiting for customer (USSD, QR, card checkout) |
+| `processing` | No | Provider is processing the payment |
+| `completed` | Yes | Payment successful |
+| `failed` | Yes | Payment failed |
+| `cancelled` | Yes | Cancelled before completion |
+| `expired` | Yes | Session or QR link expired |
+| `partially_refunded` | Yes | Partial refund applied after completion |
+
+## Webhook events per status
+
+Each transition to a new status sends a webhook with `event` = `payment.{status}`:
+
+| Status reached | Webhook `event` | Callback sent? |
+| :--- | :--- | :--- |
+| `pending` | `payment.pending` | No |
+| `processing` | `payment.processing` | No |
+| `completed` | `payment.completed` | Yes |
+| `failed` | `payment.failed` | Yes |
+| `cancelled` | `payment.cancelled` | Yes |
+| `expired` | `payment.expired` | Yes |
+| `partially_refunded` | `payment.partially_refunded` | No |
+
+Full payload reference: [Webhooks](/guides/webhooks).
+
+## Poll payment status
+
+Use when a webhook was missed or during local development.
+
+<Card title="API reference" icon="code" href="/api-reference/payments/status">
+  GET /api/v1/payments/{id}
+</Card>
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/payments/PAYMENT_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Example response (fields may vary by payment type):
+
+```json
+{
+  "status": "success",
+  "code": 200,
+  "data": {
+    "id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
+    "status": "processing",
+    "amount": 4850,
+    "original_amount": 5000,
+    "margin_amount": 150,
+    "currency": "TZS",
+    "type": "mobile",
+    "phone": "255700000000",
+    "reference": "ORDER_123",
+    "created_at": "2026-06-09T12:53:50Z",
+    "completed_at": null
+  }
+}
+```
+
+## Force status refresh
+
+Ask MeetPay to check the provider and update status (also triggers webhooks if status changed):
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payments/PAYMENT_ID/refresh" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+Use sparingly. Webhooks are the primary mechanism; repeated polling adds load without improving latency.
+
+## Integration pattern
+
+```
+POST /api/v1/payments  →  status: pending
+        ↓
+Customer pays (USSD / QR / card)
+        ↓
+Provider webhook  →  MeetPay updates status  →  your webhook_url
+        ↓
+payment.completed  →  fulfill order
+```
+
+If your server was down:
+
+```
+GET /api/v1/payments/{id}  →  check current status
+```

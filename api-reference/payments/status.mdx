@@ -2,3 +2,19 @@
 title: 'Get Payment Status'
 openapi: 'GET /api/v1/payments/{id}'
 ---
+
+Returns the current payment including `status`.
+
+## Status values
+
+| Value | Terminal |
+| :--- | :--- |
+| `pending` | No |
+| `processing` | No |
+| `completed` | Yes |
+| `failed` | Yes |
+| `cancelled` | Yes |
+| `expired` | Yes |
+| `partially_refunded` | Yes |
+
+MeetPay delivers status changes to your `webhook_url` as `payment.{status}` events. See [Webhooks](/guides/webhooks) and [Payment status](/guides/payments/status).

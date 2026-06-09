@@ -5,7 +5,11 @@ description: "GET /api/v1/payments/{id}"
 
 `GET /api/v1/payments/{id}`
 
-Prefer [Webhooks](/guides/webhooks). Use this if an event was missed.
+Returns the current payment record including `status`. Prefer [Webhooks](/guides/webhooks) for real-time updates; use this endpoint as a fallback if an event was missed.
+
+<Card title="Payment status reference" icon="list" href="/guides/payments/status">
+  Status values, webhook events, and polling guidance
+</Card>
 
 <Card title="API reference" icon="code" href="/api-reference/payments/status">
   GET /api/v1/payments/{id}
@@ -15,3 +19,5 @@ Prefer [Webhooks](/guides/webhooks). Use this if an event was missed.
 curl -X GET "https://meet.briq.tz/api/v1/payments/PAYMENT_ID" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
+
+Terminal statuses: `completed`, `failed`, `cancelled`, `expired`, `partially_refunded`. Non-terminal: `pending`, `processing`.
