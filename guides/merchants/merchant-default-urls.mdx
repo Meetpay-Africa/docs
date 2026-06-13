@@ -3,7 +3,7 @@ title: "Merchant default URLs"
 description: "PUT /api/v1/merchants/me"
 ---
 
-Optional defaults when you do not send URLs on each request.
+Optional defaults when you do not send URLs on each request. You can also set them from the dashboard (Settings → Webhooks).
 
 `PUT /api/v1/merchants/me`
 
@@ -14,7 +14,9 @@ Optional defaults when you do not send URLs on each request.
 }
 ```
 
-Required for **payout** notifications (payout create does not accept URL fields). For **payments**, you can use these defaults or pass `webhook_url` / `callback_url` on `POST /api/v1/payments` instead.
+The endpoint also accepts `name` and `phone`. URLs must be public `https://` endpoints. Fields you omit or send as empty strings keep their current value — this endpoint cannot clear a saved URL.
+
+Required for **payout** notifications (payout create does not accept URL fields; the defaults are captured when the payout is created, so set them first). For **payments**, you can use these defaults or pass `webhook_url` / `callback_url` on `POST /api/v1/payments` instead — the per-payment value always wins.
 
 See [Webhooks](/guides/webhooks).
 

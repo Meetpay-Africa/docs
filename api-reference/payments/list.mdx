@@ -2,3 +2,5 @@
 title: 'List Payments'
 openapi: 'GET /api/v1/payments'
 ---
+
+Paginated list of your payments, newest first. Query parameters: `page` (default 1) and `per_page` (default 10, max 100). The response `meta` block contains `current_page`, `per_page`, `total`, and `total_pages`.

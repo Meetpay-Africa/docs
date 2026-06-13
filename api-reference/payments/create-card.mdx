@@ -46,7 +46,8 @@ Unfinished payments expire roughly **30 minutes** after creation (PayGrid TTL). 
 
 | HTTP | `error_code` | When |
 | :--- | :--- | :--- |
-| 400 | `VALIDATION_ERROR` | Missing billing address, `redirect_url`, or `cancel_url` |
+| 400 | `VALIDATION_ERROR` | Missing or invalid `amount`, `currency`, `type`, `phone`, or `customer` basics (`firstname`, `lastname`, `email`) |
+| 400 | `PAYMENT_FAILED` | Missing `redirect_url`, `cancel_url`, or a billing address field (`address`, `city`, `state`, `postcode`, `country`) |
 
 Full list: [Errors](/guides/errors).
 

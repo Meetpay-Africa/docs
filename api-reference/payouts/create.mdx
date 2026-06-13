@@ -2,3 +2,28 @@
 title: 'Create Payout'
 openapi: 'POST /api/v1/payouts'
 ---
+
+Transfers funds from your PayGrid balance to a recipient. Returns `201` with the payout in `status: "pending"`, or `200` when replaying an existing `Idempotency-Key` (the header is optional for payouts, but recommended — see [Idempotency](/guides/idempotency)).
+
+## Channels
+
+| `channel` | Required fields |
+| :--- | :--- |
+| `mobile` | `phone` — `network` is optional (auto-detected from the number) |
+| `bank` | `account` and `recipient_bank` (SWIFT code) |
+
+`amount`, `currency` (`TZS`, `USD`, `KES`, `UGX`), and `channel` are always required. `reference` and `metadata` are optional.
+
+## Balance and fees
+
+The payout fee is added on top of `amount`; the response's `total_deducted` is what leaves your balance. Funds are reserved up front and automatically returned to your balance if the payout fails. A minimum payout amount applies for TZS (10,000 TZS by default; configurable per merchant).
+
+## Errors
+
+| HTTP | `error_code` | When |
+| :--- | :--- | :--- |
+| 400 | `VALIDATION_ERROR` | Missing channel fields, unsupported channel or currency, or amount below the TZS minimum |
+| 402 | `INSUFFICIENT_BALANCE` | Balance is lower than `amount` + fee |
+| 403 | `TEST_MODE_UNAVAILABLE` | Test keys (`sk_test_*`) cannot create payouts |
+
+Full list: [Errors](/guides/errors). See also the [Payouts guide](/guides/payouts).

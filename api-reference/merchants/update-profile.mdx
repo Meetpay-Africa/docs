@@ -2,3 +2,7 @@
 title: 'Update profile'
 openapi: 'PUT /api/v1/merchants/me'
 ---
+
+Partial update of the merchant profile. Updatable fields: `name`, `phone`, `webhook_url`, and `callback_url` — fields that are omitted or empty are left unchanged (you cannot clear a URL by sending an empty string). Returns the updated profile.
+
+The `webhook_url` and `callback_url` set here are the merchant-wide defaults; individual payments can override them per transaction. See [Webhooks](/guides/webhooks).

@@ -2,3 +2,5 @@
 title: 'Get Balance'
 openapi: 'GET /api/v1/merchants/me/balance'
 ---
+
+Returns your current balance: `balance` (the amount available for payouts), `currency`, a `balance_details` breakdown (`gross_received`, `total_fees_deducted`, `total_withdrawn`, `total_refunded`, `net_balance`), and a `period_summary` with this month's `collected`, `fees`, `withdrawn`, `refunded`, and `net` totals.

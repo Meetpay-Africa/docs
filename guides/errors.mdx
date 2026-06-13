@@ -19,7 +19,7 @@ Every error response uses the standard envelope. `error_code` is stable and mach
 }
 ```
 
-`details` is optional. For validation failures it is an array of field-level errors (`[{field, message}]`, e.g. `{"field": "customer.email", "message": "must be a valid email"}`); for payment outcomes it carries context such as `transaction_id` or `existing_transaction_id`.
+`details` is optional. For request-body validation failures it is an array of field-level errors (`[{field, message}]`, e.g. `{"field": "customer.email", "message": "must be a valid email"}`); for payment outcomes it carries context such as `transaction_id` or `existing_transaction_id`. Other errors omit it.
 
 ## Authentication
 
@@ -28,7 +28,7 @@ Authentication failures are rejected before your request reaches an endpoint:
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
 | 401 | `unauthorized` | `Authorization` header missing |
-| 401 | `invalid_api_key` | API key invalid, revoked, or inactive |
+| 401 | `invalid_api_key` | API key invalid, revoked, or inactive — or the merchant account is deactivated |
 | 401 | `UNAUTHORIZED` | Merchant identity could not be resolved for the request |
 | 401 | `MERCHANT_NOT_FOUND` | Merchant account for this key not found |
 
@@ -41,7 +41,7 @@ Authentication failures are rejected before your request reaches an endpoint:
 
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
-| 403 | `TEST_MODE_UNAVAILABLE` | `sk_test_*` key on a money-moving endpoint while test mode is not enabled for your account. Test keys never move real money; payouts are always blocked for test keys |
+| 403 | `TEST_MODE_UNAVAILABLE` | `sk_test_*` key on a money-moving endpoint while test mode is not enabled on the platform. Test keys never move real money; payouts are always blocked for test keys |
 | 403 | `RISK_CHECK_FAILED` | Blocked by your merchant risk policy |
 | 403 | `TRANSACTION_BLOCKED` | Blocked by fraud/AML screening (reason not disclosed) |
 
@@ -49,7 +49,7 @@ Authentication failures are rejected before your request reaches an endpoint:
 
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
-| 400 | `VALIDATION_ERROR` | Invalid body or params — bad phone, unsupported currency, invalid network, amount below 500 TZS (TZS mobile), `Idempotency-Key` over 255 chars. `details` lists `{field, message}` |
+| 400 | `VALIDATION_ERROR` | Invalid body or params — bad phone, unsupported currency, invalid network, `Idempotency-Key` over 255 chars. For body-binding failures `details` lists `{field, message}`; other validation errors carry the reason in `message` only |
 | 400 | `IDEMPOTENCY_KEY_REQUIRED` | `POST /api/v1/payments` called without the `Idempotency-Key` header |
 | 400 | `INVALID_ID` | Path `{id}` is not a valid UUID |
 | 400 | `INVALID_REQUEST` | Request rejected — missing or malformed fields; check your integration |
@@ -64,7 +64,7 @@ Authentication failures are rejected before your request reaches an endpoint:
 | 409 | `CONFLICT` | Resource state conflict (e.g. idempotency key collision outside the replay path) |
 | 422 | `INVALID_PAYMENT_DETAILS` | Customer payment details were rejected |
 | 422 | `TRANSACTION_LIMIT_EXCEEDED` | Amount exceeds a per-transaction limit |
-| 400 | `PAYMENT_FAILED` | Payment creation failed for an unclassified reason |
+| 400 | `PAYMENT_FAILED` | Payment creation failed for an unclassified reason — including an amount below the 500 TZS minimum (TZS mobile) and missing card-payment fields (`redirect_url`, `cancel_url`, billing address) |
 
 ## Payouts
 
@@ -88,7 +88,7 @@ Authentication failures are rejected before your request reaches an endpoint:
 | 500 | `INTERNAL_ERROR` | Unexpected server-side failure |
 | 500 | `FEE_CALCULATION_ERROR` | Transaction fee could not be computed |
 | 502 | `PROVIDER_UNAVAILABLE` | Temporary upstream outage/timeout — **retry with backoff**, reusing the same `Idempotency-Key` |
-| 502 | `PROVIDER_ERROR` | Unclassified upstream error — not automatically retryable |
+| 502 | `PROVIDER_ERROR` | Unclassified upstream error — not automatically retryable. Also returned when a status refresh (`POST .../{id}/refresh`) fails upstream; the refresh itself is safe to retry |
 
 ## Handling exceptions
 

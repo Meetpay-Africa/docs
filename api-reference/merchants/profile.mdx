@@ -2,3 +2,5 @@
 title: 'Get Profile'
 openapi: 'GET /api/v1/merchants/me'
 ---
+
+Returns the authenticated merchant's profile: `id`, `name`, `email`, `phone`, `role`, the default `webhook_url` and `callback_url` used when a payment doesn't set its own, `is_active`, and `created_at`. Balance is not included — use [Get Balance](/api-reference/merchants/balance).

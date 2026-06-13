@@ -93,7 +93,7 @@ Use sparingly — each call performs a live upstream check and returns `502 PROV
 
 ## List payments
 
-`GET /api/v1/payments` — query params `page` (default 1) and `per_page` (default 10, max 100). Responses include a `meta` block:
+`GET /api/v1/payments` — query params `page` (default 1) and `per_page` (default 10, max 100; invalid values fall back to the defaults). Results are ordered newest first. Responses include a `meta` block:
 
 ```json
 {

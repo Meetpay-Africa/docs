@@ -7,14 +7,18 @@ description: "Send money to mobile wallets and bank accounts"
 
 `POST /api/v1/payouts`
 
-`Idempotency-Key` strongly recommended — honored when present (a retry with the same key returns the existing payout). It is only mandatory on `POST /api/v1/payments`. [Idempotency](/guides/idempotency).
+`Idempotency-Key` strongly recommended — honored when present (a retry with the same key returns the existing payout with `200`). It is only mandatory on `POST /api/v1/payments`. [Idempotency](/guides/idempotency).
 
-| `channel` | Fields |
-| :--- | :--- |
-| `mobile` | `phone`, `network` |
-| `bank` | See API reference |
+| `channel` | Required fields | Optional |
+| :--- | :--- | :--- |
+| `mobile` | `phone` | `network` — auto-detected from the phone number when omitted |
+| `bank` | `account`, `recipient_bank` (SWIFT code) | |
 
-[Check your balance](/guides/account) first. Payout events use [merchant default URLs](/guides/merchants/merchant-default-urls) (not sent on this request).
+[Check your balance](/guides/account) first — a payout that exceeds your available balance fails with `402 INSUFFICIENT_BALANCE`, and amounts below your account's minimum withdraw are rejected with `400 VALIDATION_ERROR`. Payout webhooks use your [merchant default URLs](/guides/merchants/merchant-default-urls) (not sent on this request).
+
+<Note>
+Test keys (`sk_test_*`) cannot create payouts — `POST` returns `403 TEST_MODE_UNAVAILABLE`. Read endpoints work with test keys.
+</Note>
 
 ```bash
 curl -X POST "https://meet.briq.tz/api/v1/payouts" \
@@ -40,6 +44,24 @@ curl -X GET "https://meet.briq.tz/api/v1/payouts/PAYOUT_ID" \
 <Card title="API reference" icon="code" href="/api-reference/payouts/status">
   GET /api/v1/payouts/{id}
 </Card>
+
+## Refresh a payout
+
+`POST /api/v1/payouts/{id}/refresh` — re-queries the payout status on demand and returns the updated payout. Returns `502 PROVIDER_ERROR` if the upstream network is temporarily unavailable.
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payouts/PAYOUT_ID/refresh" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+## Payout events
+
+`GET /api/v1/payouts/{id}/events` — status history for a payout. Each event has `id`, `transaction_id`, `status`, `message`, `actor_type`, and `created_at`.
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/payouts/PAYOUT_ID/events" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
 
 ## List payouts
 

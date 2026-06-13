@@ -16,7 +16,7 @@ Returns `201` with `status: "pending"` and a `payment_url` for hosted card check
 | `amount`, `currency`, `type`, `customer`, `phone` | yes | `type` must be `"card"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
 | `customer` | yes | `firstname`, `lastname`, `email`, `address`, `city`, `state`, `postcode`, `country` |
 | `redirect_url`, `cancel_url` | yes | Hosted checkout return URLs |
-| `network` | no | Auto-detected from phone when provided |
+| `network` | no | Validated against the supported operator list when provided; not needed for card |
 | `reference`, `metadata` | no | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
 | `webhook_url` | no | Status events; overrides merchant default |
 | `callback_url` | no | Terminal status only; overrides merchant default |
@@ -25,7 +25,7 @@ Phone is required but is **not** strictly validated to Tanzanian format (unlike 
 
 ## What the customer sees
 
-1. You receive `payment_url` in the response.
+1. You receive `payment_url` in the response (the link is also sent to the customer's email and phone).
 2. Redirect the customer's browser to that URL.
 3. They enter card details on the hosted checkout page (PCI scope stays with PayGrid).
 4. They are redirected to your `redirect_url` (success) or `cancel_url` (cancelled).
@@ -40,8 +40,10 @@ Unfinished payments expire roughly **30 minutes** after creation.
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
 | 400 | `IDEMPOTENCY_KEY_REQUIRED` | Missing `Idempotency-Key` header |
-| 400 | `VALIDATION_ERROR` | Missing billing address, `redirect_url`, or `cancel_url` |
-| 409 | `DUPLICATE_REFERENCE` | A live payment with this `reference` exists |
+| 400 | `VALIDATION_ERROR` | Missing/invalid `amount`, `currency`, `type`, `customer`, or `phone` |
+| 400 | `PAYMENT_FAILED` | Missing `redirect_url`, `cancel_url`, or a billing address field (`customer.address`, `city`, `state`, `postcode`, `country`) |
+| 402 | `PAYMENT_DECLINED` | Payment declined immediately — no charge; `details` has `transaction_id`, `status: "failed"`, and `reference` |
+| 409 | `DUPLICATE_REFERENCE` | A live (`pending`/`processing`/`completed`) payment with this `reference` exists; failed, cancelled, or expired attempts do not block a retry |
 | 502 | `PROVIDER_UNAVAILABLE` / `PROVIDER_ERROR` | Temporary upstream outage — retry with the **same** `Idempotency-Key` |
 
 Full list: [Errors](/guides/errors).

@@ -22,12 +22,42 @@ Update your profile (including default webhook/callback URLs) with `PUT /api/v1/
 
 `GET /api/v1/merchants/me/balance`
 
-Check the available balance before [creating a payout](/guides/payouts).
+Check the available balance before [creating a payout](/guides/payouts). `data.balance` is the amount available right now — there is no separate pending bucket; `balance_details` breaks down how it was derived.
 
 ```bash
 curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
+
+```json
+{
+  "status": "success",
+  "code": 200,
+  "message": "Balance retrieved successfully",
+  "data": {
+    "balance": 1250000,
+    "currency": "TZS",
+    "balance_details": {
+      "gross_received": 1500000,
+      "total_fees_deducted": 37500,
+      "total_withdrawn": 200000,
+      "total_refunded": 12500,
+      "net_balance": 1250000
+    },
+    "period_summary": {
+      "this_month": {
+        "collected": 500000,
+        "fees": 12500,
+        "withdrawn": 100000,
+        "refunded": 0,
+        "net": 387500
+      }
+    }
+  }
+}
+```
+
+A more detailed breakdown is available at `GET /api/v1/merchants/me/balance/details`. All endpoints on this page are read or profile operations and work with both `sk_test_*` and `sk_live_*` keys.
 
 <Card title="API reference" icon="code" href="/api-reference/merchants/balance">
   GET /api/v1/merchants/me/balance

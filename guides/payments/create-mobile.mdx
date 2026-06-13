@@ -7,14 +7,14 @@ description: "POST /api/v1/payments with type: mobile"
 
 `Idempotency-Key` required — requests without it are rejected with `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
 
-Returns `201` with `status: "pending"` and a USSD push to the customer's phone, or `200` when replaying an existing `Idempotency-Key`.
+Returns `201` with `status: "pending"` and a USSD push to the customer's phone, or `200` when replaying an existing `Idempotency-Key` (the replay body has the same shape as `GET /api/v1/payments/{id}`).
 
 ## Body
 
 | Field | Required | Notes |
 | :--- | :--- | :--- |
 | `amount`, `currency`, `type`, `customer`, `phone` | yes | `type` must be `"mobile"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
-| `customer` | yes | `firstname`, `lastname`, `email` |
+| `customer` | yes | `firstname`, `lastname`, `email` (must be a valid email address) |
 | `network` | no | Auto-detected from the phone number; validated when provided |
 | `reference`, `metadata` | no | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
 | `webhook_url` | no | Status events; overrides merchant default |
@@ -24,11 +24,13 @@ Minimum **500 TZS** when `currency` is `TZS`.
 
 ## Phone formats
 
-For TZS, all of these normalize to `255712345678`: `0712345678`, `712345678`, `255712345678`, `+255712345678`. After normalization the number must be a valid Tanzanian mobile (`255` + `6`/`7` + 8 digits) — anything else returns `400 VALIDATION_ERROR`.
+Formatting characters (`+`, spaces, dashes) are stripped. For TZS, all of these normalize to `255712345678`: `0712345678`, `712345678`, `255712345678`, `+255712345678`. After normalization the number must be a valid Tanzanian mobile (`255` + `6`/`7` + 8 digits) — anything else returns `400 VALIDATION_ERROR`.
+
+For other currencies (`USD`, `KES`, `UGX`) the number is reduced to digits only and must be 10–15 digits in international format — no country code is assumed or added, so always send the full international number.
 
 ## Networks
 
-`network` is **optional** — the operator is detected automatically from the phone number. When you do send it, use lowercase:
+`network` is **optional** — the operator is detected automatically from the phone number. When you do send it, the value is case-insensitive (trimmed and lowercased) and must be one of:
 
 | `network` | Mobile money service |
 | :--- | :--- |
@@ -38,7 +40,7 @@ For TZS, all of these normalize to `255712345678`: `0712345678`, `712345678`, `2
 | halotel | Halopesa |
 | ttcl | T-Pesa |
 
-Invalid values return `400 VALIDATION_ERROR`.
+Invalid values return `400 VALIDATION_ERROR`. Aliases are normalized — the payment is stored and returned with the canonical name (`mpesa` → `vodacom`, `mixx` → `tigo`).
 
 ## What the customer sees
 
@@ -49,9 +51,10 @@ A USSD prompt pops up on the customer's phone within seconds. They enter their w
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
 | 400 | `IDEMPOTENCY_KEY_REQUIRED` | Missing `Idempotency-Key` header |
-| 400 | `VALIDATION_ERROR` | Invalid phone/network/currency, or amount below 500 TZS |
-| 402 | `PAYMENT_DECLINED` | Payment declined immediately — no charge; `details` has `transaction_id` and `status: "failed"` |
-| 409 | `DUPLICATE_REFERENCE` | A live payment with this `reference` exists |
+| 400 | `VALIDATION_ERROR` | Missing required fields, or invalid phone/network/currency |
+| 400 | `PAYMENT_FAILED` | Amount below the 500 TZS minimum (TZS mobile payments) |
+| 402 | `PAYMENT_DECLINED` | Payment declined immediately — no charge; `details` has `transaction_id`, `status: "failed"`, and `reference` |
+| 409 | `DUPLICATE_REFERENCE` | A live (`pending`/`processing`/`completed`) payment with this `reference` exists; `details` has `existing_transaction_id`, `existing_status`, `reference`. Failed, cancelled, or expired attempts do not block a retry |
 | 502 | `PROVIDER_UNAVAILABLE` / `PROVIDER_ERROR` | Temporary upstream outage — retry with the **same** `Idempotency-Key` |
 
 Full list: [Errors](/guides/errors).
@@ -69,3 +72,30 @@ curl -X POST "https://meet.briq.tz/api/v1/payments" \
   -H "Idempotency-Key: $(uuidgen)" \
   -d '{"amount":5000,"currency":"TZS","type":"mobile","phone":"255712345678","customer":{"firstname":"John","lastname":"Doe","email":"john@example.com"},"reference":"ORDER_123","webhook_url":"https://api.example.com/paygrid/webhooks"}'
 ```
+
+Example `201` response:
+
+```json
+{
+  "status": "success",
+  "code": 201,
+  "message": "Payment created successfully",
+  "data": {
+    "id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
+    "reference": "ORDER_123",
+    "provider_reference": "REF-20260609-001",
+    "external_id": "EXT-20260609-001",
+    "amount": 5000,
+    "margin_amount": 150,
+    "total_amount": 5000,
+    "currency": "TZS",
+    "type": "mobile",
+    "status": "pending",
+    "phone": "255712345678",
+    "network": "vodacom",
+    "created_at": "2026-06-09T12:53:50Z"
+  }
+}
+```
+
+`reference` is always **your** merchant reference; `provider_reference` and `external_id` are upstream payment identifiers. `network` appears only when you supplied one (canonical name). Empty fields (`payment_url`, `qr_code`) are omitted for mobile payments.

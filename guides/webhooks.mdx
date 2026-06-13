@@ -11,9 +11,13 @@ PayGrid `POST`s JSON to your URL when a payment status changes. Use webhooks as 
 | :--- | :--- |
 | `webhook_url` / `callback_url` on `POST /api/v1/payments` | That payment (overrides merchant defaults) |
 | `webhook_url` / `callback_url` on `PUT /api/v1/merchants/me` | Merchant default (used when omitted on the request) |
-| Dashboard webhook settings | Same fields as merchant profile |
+| Dashboard webhook settings | Same fields as merchant profile; can also send a signed `webhook.test` event to verify your endpoint |
 
 Priority: per-payment value → merchant default → no delivery.
+
+<Warning>
+  URLs must be `https://` and publicly reachable — private/internal hosts are rejected, and URLs longer than 2048 characters are invalid. Deliveries to an invalid URL are not retried.
+</Warning>
 
 ## `webhook_url` vs `callback_url`
 
@@ -31,6 +35,8 @@ After `POST /api/v1/payments`, a payment moves through a fixed set of normalized
 ```mermaid
 stateDiagram-v2
     [*] --> pending: Payment created (no webhook)
+    pending --> processing: Rare intermediate state
+    processing --> completed: Customer authorized; funds captured
     pending --> completed: Customer authorized; funds captured
     pending --> failed: Customer declined / wallet rejected
     pending --> cancelled: Cancelled before completion
@@ -74,7 +80,7 @@ Webhooks fire on every status **transition** — not at creation time. There is 
   Don't assume an intermediate event will precede the terminal one. Only advance your internal order status forward — never backward.
 </Note>
 
-Deduplicate with `event_id` (unique per webhook delivery, not per transaction).
+Deduplicate with `event_id` — one per status transition, not per transaction. Retries of the same event reuse the same `event_id` (only the `X-MeetPay-Delivery-ID` header changes per attempt).
 
 ## Webhook payload
 
@@ -94,7 +100,6 @@ Sent to `webhook_url` on each status change:
     "previous_status": "pending",
     "payment_type": "mobile",
     "provider_reference": "EXT-20250101-001",
-    "failure_reason": null,
     "completed_at": "2026-06-09T12:54:05Z"
   },
   "metadata": {
@@ -104,13 +109,15 @@ Sent to `webhook_url` on each status change:
 }
 ```
 
+Optional fields (`failure_reason`, `completed_at`, `metadata`) are **omitted** when empty — they are never sent as `null`.
+
 ### Webhook fields
 
 | Field | Type | Description |
 | :--- | :--- | :--- |
 | `version` | string | Payload schema version (`"1.0"`) |
 | `event` | string | Event name, e.g. `payment.completed` |
-| `event_id` | UUID | Unique per delivery — use for deduplication |
+| `event_id` | UUID | Unique per event (status transition); stable across retries — use for deduplication |
 | `transaction_id` | UUID | PayGrid payment ID (same as `GET /api/v1/payments/{id}`) |
 | `merchant_reference` | string | Your `reference` from payment creation |
 | `data.amount` | number | Original payment amount |
@@ -119,9 +126,9 @@ Sent to `webhook_url` on each status change:
 | `data.previous_status` | string | Status before this transition |
 | `data.payment_type` | string | `mobile`, `card`, or `dynamic-qr` |
 | `data.provider_reference` | string | Upstream payment reference — quote it in support requests |
-| `data.failure_reason` | string \| null | Set on `payment.failed` when available |
-| `data.completed_at` | datetime \| null | Set for terminal statuses when known |
-| `metadata` | object | Your original `metadata` echoed back |
+| `data.failure_reason` | string | Only on `payment.failed` when a reason is available; omitted otherwise |
+| `data.completed_at` | datetime | Present once the payment reaches a terminal status; omitted otherwise |
+| `metadata` | object | Your original `metadata` echoed back; omitted when empty |
 | `timestamp` | datetime | When PayGrid generated this notification |
 
 ### Example: failure event
@@ -143,7 +150,6 @@ Sent to `webhook_url` on each status change:
     "failure_reason": "Customer declined USSD prompt",
     "completed_at": "2026-06-09T12:54:11Z"
   },
-  "metadata": {},
   "timestamp": "2026-06-09T12:54:12Z"
 }
 ```
@@ -163,14 +169,15 @@ Sent to `callback_url` **once** when the payment reaches a terminal status. Simp
   "status": "completed",
   "payment_type": "mobile",
   "provider_reference": "EXT-20250101-001",
-  "failure_reason": null,
   "completed_at": "2026-06-09T12:54:05Z",
-  "metadata": {},
+  "metadata": {
+    "order_id": "ORD-9876"
+  },
   "timestamp": "2026-06-09T12:54:06Z"
 }
 ```
 
-Deduplicate callbacks with `transaction_id` (one callback per payment).
+As with webhooks, `failure_reason` (failed only), `completed_at`, and `metadata` are omitted when empty; in callbacks `merchant_reference` is also omitted when empty. Deduplicate callbacks with `transaction_id` (one callback per payment).
 
 ## Configure on payment create
 
@@ -197,17 +204,17 @@ Optional: set defaults once via [Merchant default URLs](/guides/merchants/mercha
 
 | Header | Value |
 | :--- | :--- |
-| `X-MeetPay-Signature` | `sha256=<hex>` |
+| `X-MeetPay-Signature` | `sha256=<hex>` (HMAC-SHA256) |
 | `X-MeetPay-Timestamp` | Unix seconds |
-| `X-MeetPay-Delivery-ID` | Delivery attempt id |
+| `X-MeetPay-Delivery-ID` | Unique per delivery attempt — quote it in support requests |
 
-Sign input: `{timestamp}.{raw_body}`. Key from dashboard webhook settings.
+Sign input: `{timestamp}.{raw_body}`. The signing key is issued per account — contact support if you don't have yours.
 
 ```javascript
 const crypto = require('crypto');
 
 function verify(signatureHeader, timestamp, rawBody, signingKey) {
-  // Replay protection: reject events older than 5 minutes
+  // Replay protection (recommended): reject events older than 5 minutes
   if (Math.abs(Date.now() / 1000 - parseInt(timestamp, 10)) > 300) {
     return false;
   }
@@ -216,6 +223,7 @@ function verify(signatureHeader, timestamp, rawBody, signingKey) {
     .update(`${timestamp}.${rawBody}`)
     .digest('hex');
   const received = signatureHeader.replace('sha256=', '');
+  if (received.length !== expected.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received));
 }
 ```

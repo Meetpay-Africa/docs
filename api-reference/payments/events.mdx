@@ -3,4 +3,4 @@ title: 'Get Payment Events'
 openapi: 'GET /api/v1/payments/{id}/events'
 ---
 
-Audit trail of status events for a payment, oldest first. Each event records the `status`, a human-readable `message`, and the source that triggered it in `actor_type` (`merchant` for actions you initiated; `system`, `psp`, and `poller` for PayGrid-side updates).
+Audit trail of status events for a payment, oldest first. Each event records the `status`, a human-readable `message`, and the source that triggered it in `actor_type` (`merchant` for actions you initiated; `system`, `psp`, `poller`, and `admin` for PayGrid-side updates).

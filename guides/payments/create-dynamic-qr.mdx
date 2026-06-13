@@ -15,8 +15,8 @@ Returns `201` with `status: "pending"`, a `qr_code` payload, and a `payment_url`
 | :--- | :--- | :--- |
 | `amount`, `currency`, `type`, `customer`, `phone` | yes | `type` must be `"dynamic-qr"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
 | `customer` | yes | `firstname`, `lastname`, `email` only — billing address is **not** required |
-| `redirect_url`, `cancel_url` | no | Optional; forwarded to the hosted checkout provider when set |
-| `network` | no | Auto-detected from phone when provided |
+| `redirect_url`, `cancel_url` | no | Optional; forwarded to the hosted checkout page when set |
+| `network` | no | Validated against the supported operator list when provided; not needed for QR |
 | `reference`, `metadata` | no | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
 | `webhook_url` | no | Status events; overrides merchant default |
 | `callback_url` | no | Terminal status only; overrides merchant default |
@@ -25,7 +25,7 @@ Phone is required for notifications and receipts but is **not** strictly validat
 
 ## What the customer sees
 
-1. You receive `qr_code` and `payment_url` in the response.
+1. You receive `qr_code` and `payment_url` in the response (the payment link is also sent to the customer's email and phone).
 2. Render the QR code in your UI (checkout, POS display, in-app screen).
 3. The customer scans with their mobile-money or bank app and confirms.
 4. If scanning is not possible, redirect them to `payment_url` instead.
@@ -40,8 +40,9 @@ Unfinished payments expire roughly **30 minutes** after creation.
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
 | 400 | `IDEMPOTENCY_KEY_REQUIRED` | Missing `Idempotency-Key` header |
-| 400 | `VALIDATION_ERROR` | Missing required fields or unsupported currency |
-| 409 | `DUPLICATE_REFERENCE` | A live payment with this `reference` exists |
+| 400 | `VALIDATION_ERROR` | Missing required fields, invalid network, or unsupported currency |
+| 402 | `PAYMENT_DECLINED` | Payment declined immediately — no charge; `details` has `transaction_id`, `status: "failed"`, and `reference` |
+| 409 | `DUPLICATE_REFERENCE` | A live (`pending`/`processing`/`completed`) payment with this `reference` exists; failed, cancelled, or expired attempts do not block a retry |
 | 502 | `PROVIDER_UNAVAILABLE` / `PROVIDER_ERROR` | Temporary upstream outage — retry with the **same** `Idempotency-Key` |
 
 Full list: [Errors](/guides/errors).

@@ -48,7 +48,8 @@ The customer receives a USSD prompt and authorizes with their wallet PIN. Unfini
 
 | HTTP | `error_code` | When |
 | :--- | :--- | :--- |
-| 400 | `VALIDATION_ERROR` | Invalid phone, network, currency, or amount below 500 TZS |
+| 400 | `VALIDATION_ERROR` | Invalid phone, network, or currency |
+| 400 | `PAYMENT_FAILED` | Amount below the 500 TZS minimum |
 | 402 | `PAYMENT_DECLINED` | Synchronous provider decline — `details.transaction_id` in response |
 
 Full list: [Errors](/guides/errors).

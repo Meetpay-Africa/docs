@@ -2,3 +2,5 @@
 title: 'Get payout'
 openapi: 'GET /api/v1/payouts/{id}'
 ---
+
+Returns the payout including its current `status` (`pending` while in flight, then `completed` or `failed`) and `total_deducted` (amount plus fee). Status transitions are delivered to your `webhook_url` as `payout.{status}` events — see [Webhooks](/guides/webhooks).
