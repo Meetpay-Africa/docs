@@ -5,7 +5,7 @@ description: "POST /api/v1/payouts"
 
 `POST /api/v1/payouts`
 
-`Idempotency-Key` required. [Idempotency](/guides/idempotency).
+`Idempotency-Key` strongly recommended — honored when present (a retry with the same key returns the existing payout). It is only mandatory on `POST /api/v1/payments`. [Idempotency](/guides/idempotency).
 
 | `channel` | Fields |
 | :--- | :--- |

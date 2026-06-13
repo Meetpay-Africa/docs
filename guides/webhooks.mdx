@@ -3,7 +3,7 @@ title: "Webhooks"
 description: "Signed payment status events and callbacks"
 ---
 
-MeetPay `POST`s JSON to your URL when a payment status changes. Use webhooks as the primary integration path; poll `GET /api/v1/payments/{id}` only as a fallback.
+PayGrid `POST`s JSON to your URL when a payment status changes. Use webhooks as the primary integration path; poll `GET /api/v1/payments/{id}` only as a fallback.
 
 ## URL resolution
 
@@ -17,7 +17,7 @@ Priority: per-payment value → merchant default → no delivery.
 
 ## `webhook_url` vs `callback_url`
 
-| Field | When MeetPay calls |
+| Field | When PayGrid calls |
 | :--- | :--- |
 | `webhook_url` | **Every** status change (lifecycle events) |
 | `callback_url` | **Terminal status only** (`completed`, `failed`, `expired`, `cancelled`) |
@@ -26,48 +26,52 @@ Both use the same HMAC signing. Most integrations only need `webhook_url`.
 
 ## Payment status lifecycle
 
-After `POST /api/v1/payments`, a payment moves through normalized statuses. MeetPay maps provider-specific values (for example Snippe/Selcom) into these states before delivering webhooks.
+After `POST /api/v1/payments`, a payment moves through normalized statuses. PayGrid maps provider-specific values (for example Snippe/Selcom) into these states before delivering webhooks.
 
 ```mermaid
 stateDiagram-v2
-    [*] --> pending: Payment created
-    pending --> processing: Provider accepts / customer action started
-    processing --> completed: Funds captured
-    processing --> failed: Provider reports failure
-    pending --> expired: Session or QR link timed out
+    [*] --> pending: Payment created (no webhook)
+    pending --> completed: Customer authorized; funds captured
+    pending --> failed: Customer declined / wallet rejected
     pending --> cancelled: Cancelled before completion
-    processing --> cancelled: Cancelled in flight
-    completed --> partially_refunded: Refund issued (partial)
+    pending --> expired: Not completed within ~30 minutes
+    completed --> partially_refunded: Partial refund (no webhook)
+    completed --> refunded: Full refund (no webhook)
 ```
 
 | Status | Terminal? | Meaning |
 | :--- | :--- | :--- |
 | `pending` | No | Created; awaiting customer action (USSD push, QR scan, card checkout) |
-| `processing` | No | Provider is actively processing the payment |
+| `processing` | No | Rare/legacy intermediate state — not a standard step for mobile payments |
 | `completed` | Yes | Payment successful; merchant balance credited |
 | `failed` | Yes | Payment failed at the provider |
 | `cancelled` | Yes | Payment cancelled before completion |
-| `expired` | Yes | Checkout session or QR link expired (typically 30 minutes) |
-| `partially_refunded` | Yes | One or more partial refunds applied after completion |
+| `expired` | Yes | Payment not completed within ~30 minutes of creation — PayGrid enforces this expiry and delivers `payment.expired` |
+| `partially_refunded` | — | One or more partial refunds applied after completion (no webhook emitted) |
+| `refunded` | — | Full amount refunded after completion (no webhook emitted) |
 
 Terminal statuses never regress. Once `completed`, `failed`, `cancelled`, or `expired`, the payment will not return to `pending`.
 
+Expiry is enforced by PayGrid: a payment that is still `pending` roughly 30 minutes after creation transitions to `expired` (a ~2-minute grace period applies, and if the provider is unreachable the transition can take up to ~60 minutes total). The expiry checks the provider one last time first, so a payment that actually completed late is honored.
+
 ## Payment webhook events
 
-Webhooks fire on **every** transition. The `event` field is `{transaction_type}.{new_status}` — for payments:
+Webhooks fire on every status **transition** — not at creation time. There is no `payment.pending` webhook when the payment is created: `pending` is the initial state, so the first webhook you receive is the first transition (usually a terminal status). The `event` field is `{transaction_type}.{new_status}` — for payments:
 
 | Event | `data.status` | Typical `data.previous_status` | When it fires |
 | :--- | :--- | :--- | :--- |
-| `payment.pending` | `pending` | `""` | Payment record created |
-| `payment.processing` | `processing` | `pending` | Provider accepted the payment or customer started checkout |
-| `payment.completed` | `completed` | `processing` or `pending` | Payment captured successfully |
-| `payment.failed` | `failed` | `processing` or `pending` | Provider reported failure |
-| `payment.cancelled` | `cancelled` | `pending` or `processing` | Payment cancelled |
-| `payment.expired` | `expired` | `pending` | Session or QR link expired |
-| `payment.partially_refunded` | `partially_refunded` | `completed` | Partial refund processed |
+| `payment.processing` | `processing` | `pending` | Rare — legacy intermediate state; not a standard step for mobile payments |
+| `payment.completed` | `completed` | `pending` | Payment captured successfully |
+| `payment.failed` | `failed` | `pending` | Provider reported failure |
+| `payment.cancelled` | `cancelled` | `pending` | Payment cancelled |
+| `payment.expired` | `expired` | `pending` | Payment not completed within ~30 minutes of creation |
 
 <Note>
-  Events may arrive out of order. A `payment.completed` event can arrive before `payment.processing`. Only advance your internal order status forward — never backward.
+  No webhook event is emitted for the refund statuses (`partially_refunded`, `refunded`) currently. Don't build logic that waits for a `payment.partially_refunded` or `payment.refunded` event.
+</Note>
+
+<Note>
+  Don't assume an intermediate event will precede the terminal one. Only advance your internal order status forward — never backward.
 </Note>
 
 Deduplicate with `event_id` (unique per webhook delivery, not per transaction).
@@ -87,7 +91,7 @@ Sent to `webhook_url` on each status change:
     "amount": 5000,
     "currency": "TZS",
     "status": "completed",
-    "previous_status": "processing",
+    "previous_status": "pending",
     "payment_type": "mobile",
     "provider_reference": "EXT-20250101-001",
     "failure_reason": null,
@@ -107,10 +111,10 @@ Sent to `webhook_url` on each status change:
 | `version` | string | Payload schema version (`"1.0"`) |
 | `event` | string | Event name, e.g. `payment.completed` |
 | `event_id` | UUID | Unique per delivery — use for deduplication |
-| `transaction_id` | UUID | MeetPay payment ID (same as `GET /api/v1/payments/{id}`) |
+| `transaction_id` | UUID | PayGrid payment ID (same as `GET /api/v1/payments/{id}`) |
 | `merchant_reference` | string | Your `reference` from payment creation |
 | `data.amount` | number | Original payment amount |
-| `data.currency` | string | Currency code (`TZS`) |
+| `data.currency` | string | Currency code (`TZS`, `USD`, `KES`, `UGX`) |
 | `data.status` | string | New status after this transition |
 | `data.previous_status` | string | Status before this transition |
 | `data.payment_type` | string | `mobile`, `card`, or `dynamic-qr` |
@@ -118,7 +122,7 @@ Sent to `webhook_url` on each status change:
 | `data.failure_reason` | string \| null | Set on `payment.failed` when available |
 | `data.completed_at` | datetime \| null | Set for terminal statuses when known |
 | `metadata` | object | Your original `metadata` echoed back |
-| `timestamp` | datetime | When MeetPay generated this notification |
+| `timestamp` | datetime | When PayGrid generated this notification |
 
 ### Example: failure event
 
@@ -133,7 +137,7 @@ Sent to `webhook_url` on each status change:
     "amount": 5000,
     "currency": "TZS",
     "status": "failed",
-    "previous_status": "processing",
+    "previous_status": "pending",
     "payment_type": "mobile",
     "provider_reference": "EXT-20250101-001",
     "failure_reason": "Customer declined USSD prompt",
@@ -179,12 +183,11 @@ curl -X POST "https://meet.briq.tz/api/v1/payments" \
     "amount": 5000,
     "currency": "TZS",
     "type": "mobile",
-    "phone": "255700000000",
-    "network": "AIRTEL",
+    "phone": "255712345678",
     "customer": {"firstname": "John", "lastname": "Doe", "email": "john@example.com"},
     "reference": "ORDER_123",
-    "webhook_url": "https://api.example.com/meetpay/webhooks",
-    "callback_url": "https://api.example.com/meetpay/callback"
+    "webhook_url": "https://api.example.com/paygrid/webhooks",
+    "callback_url": "https://api.example.com/paygrid/callback"
   }'
 ```
 
@@ -229,7 +232,7 @@ function verify(signatureHeader, timestamp, rawBody, signingKey) {
 
 | Scenario | Behavior |
 | :--- | :--- |
-| Your endpoint returns non-2xx or times out | MeetPay retries via background worker |
+| Your endpoint returns non-2xx or times out | PayGrid retries via background worker |
 | Retries exhausted | Delivery moves to dead-letter queue; merchant notified |
 | Missed webhook | `GET /api/v1/payments/{id}` or `POST /api/v1/payments/{id}/refresh` |
 

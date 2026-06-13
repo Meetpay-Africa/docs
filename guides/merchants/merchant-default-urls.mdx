@@ -9,8 +9,8 @@ Optional defaults when you do not send URLs on each request.
 
 ```json
 {
-  "webhook_url": "https://api.example.com/meetpay/webhooks",
-  "callback_url": "https://api.example.com/meetpay/callback"
+  "webhook_url": "https://api.example.com/paygrid/webhooks",
+  "callback_url": "https://api.example.com/paygrid/callback"
 }
 ```
 
@@ -26,5 +26,5 @@ See [Webhooks](/guides/webhooks).
 curl -X PUT "https://meet.briq.tz/api/v1/merchants/me" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
-  -d '{"webhook_url":"https://api.example.com/meetpay/webhooks","callback_url":"https://api.example.com/meetpay/callback"}'
+  -d '{"webhook_url":"https://api.example.com/paygrid/webhooks","callback_url":"https://api.example.com/paygrid/callback"}'
 ```

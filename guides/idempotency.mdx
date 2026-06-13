@@ -3,14 +3,31 @@ title: "Idempotency"
 description: "Idempotency-Key header"
 ---
 
-Required on:
-
-- `POST /api/v1/payments`
-- `POST /api/v1/payouts`
-- `POST /api/v1/refunds`
-
 ```http
 Idempotency-Key: <uuid>
 ```
 
-New UUID per new transaction. Reuse only when retrying the same request.
+**Required** on `POST /api/v1/payments` — requests without the header are rejected:
+
+```json
+{
+  "status": "error",
+  "code": 400,
+  "error_code": "IDEMPOTENCY_KEY_REQUIRED",
+  "message": "The Idempotency-Key header is required for POST /api/v1/payments..."
+}
+```
+
+Recommended (honored when present) on `POST /api/v1/payouts`.
+
+## Rules
+
+- New unique value per payment attempt; reuse the **same** value only when retrying the same request (timeouts, 5xx, network errors).
+- Max 255 characters; longer keys return `400 VALIDATION_ERROR`. UUID v4 is a good choice.
+- Keys are scoped to your merchant account — different merchants can use the same key.
+
+## Replay behavior
+
+Retrying with a key that already created a payment returns `200 OK` (not `201`) with the **original** payment in `data` and `message: "Payment already exists (idempotency)"`. No second charge, no second USSD push.
+
+Replay is concurrent-safe: if two requests with the same key race, exactly one payment is created and the other request receives a `200` replay of the winner.

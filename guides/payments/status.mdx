@@ -10,32 +10,37 @@ Track payment outcomes via [Webhooks](/guides/webhooks) (recommended) or by poll
 | Status | Terminal | Description |
 | :--- | :--- | :--- |
 | `pending` | No | Payment created; waiting for customer (USSD, QR, card checkout) |
-| `processing` | No | Provider is processing the payment |
+| `processing` | No | Rare/legacy intermediate state — mobile payments normally go straight from `pending` to a terminal status |
 | `completed` | Yes | Payment successful |
 | `failed` | Yes | Payment failed |
 | `cancelled` | Yes | Cancelled before completion |
-| `expired` | Yes | Session or QR link expired |
-| `partially_refunded` | Yes | Partial refund applied after completion |
+| `expired` | Yes | Payment not completed within ~30 minutes of creation |
+| `partially_refunded` | — | Set after completion when a partial refund is applied |
+| `refunded` | — | Set after completion when the full amount has been refunded |
+
+Payments that are not completed expire roughly 30 minutes after creation (a short grace period applies), transitioning to `expired` with webhook and callback delivery.
 
 ## Webhook events per status
 
-Each transition to a new status sends a webhook with `event` = `payment.{status}`:
+Webhooks fire on status **transitions** only — there is no webhook when the payment is created (`pending` is the initial state, not a transition):
 
 | Status reached | Webhook `event` | Callback sent? |
 | :--- | :--- | :--- |
-| `pending` | `payment.pending` | No |
-| `processing` | `payment.processing` | No |
+| `processing` (rare) | `payment.processing` | No |
 | `completed` | `payment.completed` | Yes |
 | `failed` | `payment.failed` | Yes |
 | `cancelled` | `payment.cancelled` | Yes |
 | `expired` | `payment.expired` | Yes |
-| `partially_refunded` | `payment.partially_refunded` | No |
+
+<Note>
+  No webhook is currently emitted for the refund statuses (`partially_refunded`, `refunded`).
+</Note>
 
 Full payload reference: [Webhooks](/guides/webhooks).
 
 ## Poll payment status
 
-Use when a webhook was missed or during local development.
+`GET /api/v1/payments/{id}` reads from PayGrid's database — no provider round-trip, so it is safe to poll every 2–5 seconds while the customer is on the USSD prompt.
 
 <Card title="API reference" icon="code" href="/api-reference/payments/status">
   GET /api/v1/payments/{id}
@@ -52,32 +57,39 @@ Example response (fields may vary by payment type):
 {
   "status": "success",
   "code": 200,
+  "message": "Payment retrieved successfully",
   "data": {
     "id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
-    "status": "processing",
-    "amount": 4850,
-    "original_amount": 5000,
+    "reference": "ORDER_123",
+    "external_id": "EXT-20260609-001",
+    "amount": 5000,
     "margin_amount": 150,
+    "total_amount": 5000,
     "currency": "TZS",
     "type": "mobile",
-    "phone": "255700000000",
-    "reference": "ORDER_123",
+    "status": "pending",
+    "phone": "255712345678",
+    "network": "vodacom",
+    "payment_url": "",
+    "qr_code": "",
     "created_at": "2026-06-09T12:53:50Z",
     "completed_at": null
   }
 }
 ```
 
+`reference` is always **your** merchant reference; the provider-side identifier is `external_id`.
+
 ## Force status refresh
 
-Ask MeetPay to check the provider and update status (also triggers webhooks if status changed):
+`POST /api/v1/payments/{id}/refresh` makes PayGrid query the provider and update the local record (also triggers webhooks if the status changed):
 
 ```bash
 curl -X POST "https://meet.briq.tz/api/v1/payments/PAYMENT_ID/refresh" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-Use sparingly. Webhooks are the primary mechanism; repeated polling adds load without improving latency.
+Use sparingly — each call costs a provider round-trip and returns `502 PROVIDER_ERROR` if the provider is unreachable. For routine polling prefer `GET`; PayGrid's own background poller also refreshes pending payments automatically.
 
 ## Integration pattern
 
@@ -86,7 +98,7 @@ POST /api/v1/payments  →  status: pending
         ↓
 Customer pays (USSD / QR / card)
         ↓
-Provider webhook  →  MeetPay updates status  →  your webhook_url
+Provider notifies PayGrid  →  status transition  →  your webhook_url
         ↓
 payment.completed  →  fulfill order
 ```

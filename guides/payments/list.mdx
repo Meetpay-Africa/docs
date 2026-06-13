@@ -5,13 +5,26 @@ description: "GET /api/v1/payments"
 
 `GET /api/v1/payments`
 
-Query: `page`, `per_page`
+Query: `page` (default 1), `per_page` (default 10, max 100)
+
+Responses include a `meta` block:
+
+```json
+{
+  "meta": {
+    "current_page": 1,
+    "per_page": 10,
+    "total": 42,
+    "total_pages": 5
+  }
+}
+```
 
 <Card title="API reference" icon="code" href="/api-reference/payments/list">
   GET /api/v1/payments
 </Card>
 
 ```bash
-curl -X GET "https://meet.briq.tz/api/v1/payments?page=1&per_page=20" \
+curl -X GET "https://meet.briq.tz/api/v1/payments?page=1&per_page=10" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```

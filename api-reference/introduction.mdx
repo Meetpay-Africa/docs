@@ -1,6 +1,6 @@
 ---
 title: 'Introduction'
-description: 'MeetPay Developer API reference'
+description: 'PayGrid Developer API reference'
 ---
 
 `/api/v1/` with `Authorization: Bearer <api_key>`.
@@ -13,9 +13,10 @@ Dashboard only (not in this reference): API keys, detailed ledger, settlements, 
 | :--- | :--- |
 | Connection | `GET /api/v1/ping` |
 | Account | `GET`, `PUT /api/v1/merchants/me`; `GET /api/v1/merchants/me/balance` |
-| Payments | `POST`, `GET /api/v1/payments`; `GET /api/v1/payments/{id}` |
-| Payouts | `POST`, `GET /api/v1/payouts`; `GET /api/v1/payouts/{id}` |
-| Refunds | `POST`, `GET /api/v1/refunds`; `GET /api/v1/refunds/{id}` |
+| Payments | `POST`, `GET /api/v1/payments`; `GET /api/v1/payments/{id}`; `POST /api/v1/payments/{id}/refresh`; `GET /api/v1/payments/{id}/events` |
+| Payouts | `POST`, `GET /api/v1/payouts`; `GET /api/v1/payouts/{id}`; `POST /api/v1/payouts/{id}/refresh`; `GET /api/v1/payouts/{id}/events` |
+
+Rate limit: 60 requests/minute per API key (`X-RateLimit-*` headers on every response; `429 RATE_LIMIT_EXCEEDED` when exceeded). All responses use the envelope `{status, code, message, data, meta?}` — errors add `error_code` and optional `details`. See [Errors](/guides/errors).
 
 <Card
   title="OpenAPI"

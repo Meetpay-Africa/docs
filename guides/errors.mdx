@@ -1,0 +1,72 @@
+---
+title: "Errors"
+description: "Error envelope and error_code reference"
+---
+
+All errors use the standard envelope. `error_code` is stable and machine-readable — branch on it, not on `message`:
+
+```json
+{
+  "status": "error",
+  "code": 409,
+  "error_code": "DUPLICATE_REFERENCE",
+  "message": "A payment with this reference already exists for this merchant...",
+  "details": {
+    "existing_transaction_id": "f5d238bd-f8ab-4379-9832-0f1ce6d65cbe",
+    "existing_status": "pending",
+    "reference": "ORDER_123"
+  }
+}
+```
+
+`details` is optional: field-level validation errors as `[{field, message}]`, or context like `existing_transaction_id` / `transaction_id`.
+
+## Request and validation
+
+| HTTP | `error_code` | Meaning |
+| :--- | :--- | :--- |
+| 400 | `VALIDATION_ERROR` | Invalid body or params — bad phone, unsupported currency, invalid network, amount below 500 TZS (TZS mobile), `Idempotency-Key` over 255 chars. `details` lists `{field, message}` |
+| 400 | `IDEMPOTENCY_KEY_REQUIRED` | `POST /api/v1/payments` called without the `Idempotency-Key` header |
+| 400 | `INVALID_ID` | Path `{id}` is not a valid UUID |
+| 400 | `INVALID_REQUEST` | Provider rejected the request — missing/malformed fields, check your integration |
+| 400 | `PAYMENT_FAILED` | Payment creation failed for an unclassified reason |
+
+## Auth and access
+
+| HTTP | `error_code` | Meaning |
+| :--- | :--- | :--- |
+| 401 | `UNAUTHORIZED` | API key missing, invalid, or expired |
+| 401 | `MERCHANT_NOT_FOUND` | Merchant account for this key not found |
+| 403 | `TEST_MODE_UNAVAILABLE` | `sk_test_*` key on a money-moving endpoint with no sandbox gateway configured. Test keys never move real money; payouts are always blocked for test keys |
+| 403 | `RISK_CHECK_FAILED` | Blocked by your merchant risk policy |
+| 403 | `TRANSACTION_BLOCKED` | Blocked by provider fraud/AML rules (reason not disclosed) |
+
+## Payment outcomes
+
+| HTTP | `error_code` | Meaning |
+| :--- | :--- | :--- |
+| 402 | `PAYMENT_DECLINED` | Provider declined synchronously — customer **not** charged. `details` has `transaction_id`, `status: "failed"`, `reference`; the failed payment stays queryable by ID |
+| 402 | `INSUFFICIENT_FUNDS` | Customer's wallet has insufficient funds |
+| 409 | `DUPLICATE_REFERENCE` | A live (`pending`/`processing`/`completed`) payment with this `reference` exists. Reuse allowed after `failed`/`cancelled`/`expired` |
+| 409 | `CONFLICT` | Resource state conflict (e.g. idempotency key collision outside the replay path) |
+| 422 | `INVALID_PAYMENT_DETAILS` | Customer payment details rejected by the provider |
+| 422 | `TRANSACTION_LIMIT_EXCEEDED` | Amount exceeds a provider per-transaction limit |
+
+## Not found, rate limits, server, provider
+
+| HTTP | `error_code` | Meaning |
+| :--- | :--- | :--- |
+| 404 | `RESOURCE_NOT_FOUND` | Payment not found (or belongs to another merchant) |
+| 429 | `RATE_LIMIT_EXCEEDED` | Over 60 requests/minute per API key — check `X-RateLimit-Reset`, then retry |
+| 500 | `INTERNAL_ERROR` | Unexpected server-side failure |
+| 500 | `FEE_CALCULATION_ERROR` | Fee engine could not compute the transaction fee |
+| 502 | `PROVIDER_UNAVAILABLE` | Provider outage/timeout — **retry with backoff**, reusing the same `Idempotency-Key` |
+| 502 | `PROVIDER_ERROR` | Unclassified provider error — not automatically retryable |
+
+## Retry guidance
+
+- **Retry with the same `Idempotency-Key`**: timeouts, `429`, `502 PROVIDER_UNAVAILABLE`, `5xx`. A retry that finds the original payment returns `200` with it — never a duplicate charge.
+- **Fix the request first**: `400`, `401`, `403`, `404`, `422`.
+- **Don't retry as-is**: `402 PAYMENT_DECLINED` (ask the customer to use another method), `409 DUPLICATE_REFERENCE` (use a new `reference`, or check `details.existing_transaction_id`).
+
+[Create payment](/guides/payments/create) · [Idempotency](/guides/idempotency)

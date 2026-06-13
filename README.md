@@ -1,4 +1,4 @@
-# MeetPay Documentation
+# PayGrid Documentation
 
 Developer API (`/api/v1/`, API keys). Open `quickstart.mdx` in Guides.
 
@@ -6,4 +6,4 @@ Developer API (`/api/v1/`, API keys). Open `quickstart.mdx` in Guides.
 npm i -g mint && mint dev
 ```
 
-[support@meetpay.africa](mailto:support@meetpay.africa)
+[sms@briq.tz](mailto:sms@briq.tz)

@@ -1,16 +1,16 @@
 {
   "$schema": "https://mintlify.com/docs.json",
   "theme": "mint",
-  "name": "MeetPay",
+  "name": "PayGrid",
   "colors": {
-    "primary": "#10B981",
-    "light": "#34D399",
-    "dark": "#059669"
+    "primary": "#e3ce49",
+    "light": "#ecd95f",
+    "dark": "#d4be3c"
   },
   "fonts": {
-    "family": "Inter"
+    "family": "Plus Jakarta Sans"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "navigation": {
     "tabs": [
       {
@@ -19,7 +19,9 @@
           {
             "group": "Getting started",
             "pages": [
-              "quickstart"
+              "quickstart",
+              "guides/idempotency",
+              "guides/errors"
             ]
           },
           {
@@ -58,14 +60,6 @@
               "guides/payouts/get",
               "guides/payouts/list"
             ]
-          },
-          {
-            "group": "Refunds",
-            "pages": [
-              "guides/refunds/create",
-              "guides/refunds/get",
-              "guides/refunds/list"
-            ]
           }
         ]
       },
@@ -97,7 +91,9 @@
             "pages": [
               "api-reference/payments/create",
               "api-reference/payments/status",
-              "api-reference/payments/list"
+              "api-reference/payments/list",
+              "api-reference/payments/refresh",
+              "api-reference/payments/events"
             ]
           },
           {
@@ -107,14 +103,6 @@
               "api-reference/payouts/status",
               "api-reference/payouts/list"
             ]
-          },
-          {
-            "group": "Refunds",
-            "pages": [
-              "api-reference/refunds/create",
-              "api-reference/refunds/status",
-              "api-reference/refunds/list"
-            ]
           }
         ]
       }
@@ -123,27 +111,27 @@
       "anchors": [
         {
           "anchor": "Developer Dashboard",
-          "href": "https://meet.briq.tz",
+          "href": "https://paygrid.briq.tz",
           "icon": "browser"
         }
       ]
     }
   },
   "logo": {
-    "light": "/logo/light.svg",
-    "dark": "/logo/dark.svg"
+    "light": "/logo/light.png",
+    "dark": "/logo/dark.png"
   },
   "navbar": {
     "links": [
       {
         "label": "Support",
-        "href": "mailto:support@meetpay.africa"
+        "href": "mailto:sms@briq.tz"
       }
     ],
     "primary": {
       "type": "button",
       "label": "Go to Dashboard",
-      "href": "https://meet.briq.tz"
+      "href": "https://paygrid.briq.tz"
     }
   },
   "contextual": {
@@ -156,8 +144,7 @@
   },
   "footer": {
     "socials": {
-      "x": "https://x.com/meetpayafrica",
-      "github": "https://github.com/meetpay-africa"
+      "website": "https://briq.tz"
     }
   }
 }

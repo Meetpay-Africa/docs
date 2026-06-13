@@ -1,13 +1,17 @@
 ---
 title: "Quickstart"
-description: "MeetPay Developer API"
+description: "PayGrid Developer API"
 ---
 
-MeetPay Developer API (`/api/v1/`). API key auth only. Dashboard handles keys, reports, and ledger export.
+PayGrid Developer API (`/api/v1/`). API key auth only. Dashboard handles keys, reports, and ledger export. Rate limit: 60 requests/minute per API key.
 
 ## 1. API key
 
-[Dashboard](https://meet.briq.tz) → generate `sk_test_...` or `sk_live_...`.
+[Dashboard](https://paygrid.briq.tz) → generate `sk_test_...` or `sk_live_...`.
+
+<Note>
+  Test keys (`sk_test_*`) never move real money. Creating a payment with a test key returns `403 TEST_MODE_UNAVAILABLE` unless the platform has a Selcom sandbox gateway configured — in that case test payments run against the sandbox and never touch real balances. Payouts are always blocked for test keys; read endpoints work normally.
+</Note>
 
 ## 2. Ping
 
@@ -22,17 +26,21 @@ curl -X GET "https://meet.briq.tz/api/v1/ping" \
 
 ## 3. Create payment
 
-`Idempotency-Key` required. [Idempotency](/guides/idempotency).
+`Idempotency-Key` required — missing it returns `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
 
-Include `webhook_url` on the request (or set [merchant defaults](/guides/merchants/merchant-default-urls)). MeetPay posts `payment.{status}` events as the payment moves from `pending` → `processing` → `completed` (or `failed` / `expired`). See [Webhooks](/guides/webhooks) and [Payment status](/guides/payments/status).
+Minimum amount: **500 TZS** for TZS mobile payments.
+
+Include `webhook_url` on the request (or set [merchant defaults](/guides/merchants/merchant-default-urls)). PayGrid posts `payment.{status}` events on status transitions as the payment moves from `pending` to a terminal status (`completed`, `failed`, `cancelled`, or `expired` after ~30 minutes). There is no webhook at creation time. See [Webhooks](/guides/webhooks) and [Payment status](/guides/payments/status).
 
 ```bash
 curl -X POST "https://meet.briq.tz/api/v1/payments" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -H "Content-Type: application/json" \
   -H "Idempotency-Key: $(uuidgen)" \
-  -d '{"amount":5000,"currency":"TZS","type":"mobile","phone":"255700000000","network":"AIRTEL","customer":{"firstname":"John","lastname":"Doe","email":"john@example.com"},"reference":"ORDER_123","webhook_url":"https://api.example.com/meetpay/webhooks"}'
+  -d '{"amount":5000,"currency":"TZS","type":"mobile","phone":"255712345678","customer":{"firstname":"John","lastname":"Doe","email":"john@example.com"},"reference":"ORDER_123","webhook_url":"https://api.example.com/paygrid/webhooks"}'
 ```
+
+Returns `201` with `status: "pending"` — the customer gets a USSD prompt on their phone and authorizes with their wallet PIN, typically within seconds.
 
 ## 4. Balance
 
@@ -43,12 +51,14 @@ curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
 
 ## Networks
 
+`network` is optional — the operator is auto-detected from the phone number. When provided, use lowercase values:
+
 | Network | Provider |
 | :--- | :--- |
-| VODACOM | M-Pesa |
-| TIGO | Tigo Pesa |
-| AIRTEL | Airtel Money |
-| HALOTEL | Halopesa |
-| TTCL | T-Pesa |
+| vodacom | M-Pesa |
+| tigo | Tigo Pesa |
+| airtel | Airtel Money |
+| halotel | Halopesa |
+| ttcl | T-Pesa |
 
-Collections: `type: "mobile"` only for now. See [Create payment](/guides/payments/create).
+Collections: `type: "mobile"` (USSD push), `type: "card"` and `type: "dynamic-qr"` (hosted checkout via `payment_url`). See [Create payment](/guides/payments/create).

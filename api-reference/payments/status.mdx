@@ -10,11 +10,12 @@ Returns the current payment including `status`.
 | Value | Terminal |
 | :--- | :--- |
 | `pending` | No |
-| `processing` | No |
+| `processing` (rare) | No |
 | `completed` | Yes |
 | `failed` | Yes |
 | `cancelled` | Yes |
 | `expired` | Yes |
-| `partially_refunded` | Yes |
+| `partially_refunded` | After completion |
+| `refunded` | After completion |
 
-MeetPay delivers status changes to your `webhook_url` as `payment.{status}` events. See [Webhooks](/guides/webhooks) and [Payment status](/guides/payments/status).
+PayGrid delivers status transitions to your `webhook_url` as `payment.{status}` events (no webhook at creation, and none for the refund statuses `partially_refunded` / `refunded`). See [Webhooks](/guides/webhooks) and [Payment status](/guides/payments/status).

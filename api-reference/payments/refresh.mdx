@@ -1,0 +1,8 @@
+---
+title: 'Refresh Payment Status'
+openapi: 'POST /api/v1/payments/{id}/refresh'
+---
+
+Forces PayGrid to query the provider and update the local record. Triggers webhooks/callbacks if the status changed.
+
+Use sparingly — each call costs a provider round-trip and returns `502 PROVIDER_ERROR` when the provider is unreachable. For routine polling prefer [GET /api/v1/payments/{id}](/api-reference/payments/status); PayGrid's background poller also refreshes pending payments automatically.

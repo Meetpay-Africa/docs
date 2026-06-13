@@ -1,0 +1,6 @@
+---
+title: 'Get Payment Events'
+openapi: 'GET /api/v1/payments/{id}/events'
+---
+
+Audit trail of status events for a payment, oldest first. Each event records the `status`, a human-readable `message`, and who triggered it (`actor_type`: `system`, `psp`, `poller`, or `merchant`).
