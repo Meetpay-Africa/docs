@@ -1,0 +1,52 @@
+---
+title: 'Create Dynamic QR Payment'
+description: 'POST /api/v1/payments with type: dynamic-qr'
+openapi: 'POST /api/v1/payments'
+---
+
+`POST /api/v1/payments` with `type: "dynamic-qr"`.
+
+`Idempotency-Key` is **required** — requests without it return `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
+
+Returns `201` with `status: "pending"`, a `qr_code` payload, and a `payment_url` fallback, or `200` when replaying an existing `Idempotency-Key`.
+
+## Required fields
+
+| Field | Notes |
+| :--- | :--- |
+| `amount`, `currency`, `type`, `customer`, `phone` | `type` must be `"dynamic-qr"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
+| `customer` | `firstname`, `lastname`, `email` only — billing address is **not** required |
+
+## Optional fields
+
+| Field | Notes |
+| :--- | :--- |
+| `redirect_url`, `cancel_url` | Forwarded to the hosted checkout provider when set; not validated as required |
+| `network` | Mobile network operator |
+| `reference`, `metadata` | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
+| `webhook_url`, `callback_url` | Override merchant defaults |
+
+<Note>Phone is required for notifications and receipts but is **not** strictly validated to Tanzanian format (unlike mobile payments).</Note>
+
+## Response
+
+| Field | Value |
+| :--- | :--- |
+| `status` | `pending` |
+| `qr_code` | QR data string — render in your UI for the customer to scan |
+| `payment_url` | Hosted checkout fallback when scanning is not possible |
+| `payment_token` | May be set by the provider |
+
+If the provider does not return a separate QR string, `qr_code` falls back to `payment_url`.
+
+Unfinished payments expire roughly **30 minutes** after creation.
+
+## Errors
+
+| HTTP | `error_code` | When |
+| :--- | :--- | :--- |
+| 400 | `VALIDATION_ERROR` | Missing required fields or unsupported currency |
+
+Full list: [Errors](/guides/errors).
+
+<Note>In Try It, select the **Dynamic QR** request example.</Note>

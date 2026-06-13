@@ -1,0 +1,61 @@
+---
+title: "Create dynamic QR payment"
+description: "POST /api/v1/payments with type: dynamic-qr"
+---
+
+`POST /api/v1/payments` with `type: "dynamic-qr"`.
+
+`Idempotency-Key` required — requests without it are rejected with `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
+
+Returns `201` with `status: "pending"`, a `qr_code` payload, and a `payment_url` fallback, or `200` when replaying an existing `Idempotency-Key`.
+
+## Body
+
+| Field | Required | Notes |
+| :--- | :--- | :--- |
+| `amount`, `currency`, `type`, `customer`, `phone` | yes | `type` must be `"dynamic-qr"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
+| `customer` | yes | `firstname`, `lastname`, `email` only — billing address is **not** required |
+| `redirect_url`, `cancel_url` | no | Optional; forwarded to the hosted checkout provider when set |
+| `network` | no | Auto-detected from phone when provided |
+| `reference`, `metadata` | no | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
+| `webhook_url` | no | Status events; overrides merchant default |
+| `callback_url` | no | Terminal status only; overrides merchant default |
+
+Phone is required for notifications and receipts but is **not** strictly validated to Tanzanian format (unlike mobile payments).
+
+## What the customer sees
+
+1. You receive `qr_code` and `payment_url` in the response.
+2. Render the QR code in your UI (checkout, POS display, in-app screen).
+3. The customer scans with their mobile-money or bank app and confirms.
+4. If scanning is not possible, redirect them to `payment_url` instead.
+5. PayGrid sends a [webhook](/guides/webhooks) when the payment reaches a terminal status.
+
+If the provider does not return a separate QR string, `qr_code` falls back to `payment_url`.
+
+Unfinished payments expire roughly **30 minutes** after creation.
+
+## Error semantics
+
+| HTTP | `error_code` | Meaning |
+| :--- | :--- | :--- |
+| 400 | `IDEMPOTENCY_KEY_REQUIRED` | Missing `Idempotency-Key` header |
+| 400 | `VALIDATION_ERROR` | Missing required fields or unsupported currency |
+| 409 | `DUPLICATE_REFERENCE` | A live payment with this `reference` exists |
+| 502 | `PROVIDER_UNAVAILABLE` / `PROVIDER_ERROR` | Temporary upstream outage — retry with the **same** `Idempotency-Key` |
+
+Full list: [Errors](/guides/errors).
+
+[Webhooks](/guides/webhooks) · [Payment status](/guides/payments/status) · [Mobile payment](/guides/payments/create-mobile) · [Card payment](/guides/payments/create-card)
+
+<Card title="API reference" icon="code" href="/api-reference/payments/create-dynamic-qr">
+  Create Dynamic QR Payment
+</Card>
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payments" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"amount":5000,"currency":"TZS","type":"dynamic-qr","phone":"255712345678","customer":{"firstname":"John","lastname":"Doe","email":"john@example.com"},"reference":"ORDER_123","webhook_url":"https://api.example.com/paygrid/webhooks"}'
+```

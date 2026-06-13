@@ -1,27 +1,26 @@
 ---
-title: "Create payment"
-description: "POST /api/v1/payments"
+title: "Create mobile payment"
+description: "POST /api/v1/payments with type: mobile"
 ---
 
-`POST /api/v1/payments`
+`POST /api/v1/payments` with `type: "mobile"`.
 
 `Idempotency-Key` required — requests without it are rejected with `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
 
-Returns `201` with the new payment, or `200` when replaying an existing `Idempotency-Key`.
+Returns `201` with `status: "pending"` and a USSD push to the customer's phone, or `200` when replaying an existing `Idempotency-Key`.
 
 ## Body
 
 | Field | Required | Notes |
 | :--- | :--- | :--- |
-| `amount`, `currency`, `type`, `customer` | yes | Currencies: `TZS`, `USD`, `KES`, `UGX`. Minimum **500 TZS** for TZS mobile |
-| `phone` | yes | All payment types. See formats below |
+| `amount`, `currency`, `type`, `customer`, `phone` | yes | `type` must be `"mobile"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
+| `customer` | yes | `firstname`, `lastname`, `email` |
 | `network` | no | Auto-detected from the phone number; validated when provided |
-| `reference`, `metadata` | no | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` (see below) |
+| `reference`, `metadata` | no | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
 | `webhook_url` | no | Status events; overrides merchant default |
 | `callback_url` | no | Terminal status only; overrides merchant default |
-| `redirect_url`, `cancel_url` | card | Required for `type: "card"` (hosted checkout return URLs) |
 
-`customer` requires `firstname`, `lastname`, `email`. Card payments additionally require `address`, `city`, `state`, `postcode`, `country`.
+Minimum **500 TZS** when `currency` is `TZS`.
 
 ## Phone formats
 
@@ -29,9 +28,9 @@ For TZS, all of these normalize to `255712345678`: `0712345678`, `712345678`, `2
 
 ## Networks
 
-`network` is **optional** — Selcom detects the operator from the phone number. When you do send it, use lowercase:
+`network` is **optional** — the operator is detected automatically from the phone number. When you do send it, use lowercase:
 
-| `network` | Provider |
+| `network` | Mobile money service |
 | :--- | :--- |
 | vodacom | M-Pesa (alias: `mpesa`) |
 | tigo | Tigo Pesa / Mixx (alias: `mixx`) |
@@ -41,13 +40,9 @@ For TZS, all of these normalize to `255712345678`: `0712345678`, `712345678`, `2
 
 Invalid values return `400 VALIDATION_ERROR`.
 
-## What the customer sees (mobile)
+## What the customer sees
 
 A USSD prompt pops up on the customer's phone within seconds. They enter their wallet PIN and the payment usually completes in seconds. If they decline, the payment moves to `failed`/`cancelled`; if they ignore the prompt, it stays `pending` and expires roughly 30 minutes after creation.
-
-## Card and dynamic QR
-
-`type: "card"` and `type: "dynamic-qr"` create a Selcom hosted checkout. The response includes a `payment_url` the customer opens to pay (card entry or QR scan); `dynamic-qr` also returns `qr_code`. Card requires `redirect_url`, `cancel_url`, and the full customer billing address.
 
 ## Error semantics
 
@@ -55,16 +50,16 @@ A USSD prompt pops up on the customer's phone within seconds. They enter their w
 | :--- | :--- | :--- |
 | 400 | `IDEMPOTENCY_KEY_REQUIRED` | Missing `Idempotency-Key` header |
 | 400 | `VALIDATION_ERROR` | Invalid phone/network/currency, or amount below 500 TZS |
-| 402 | `PAYMENT_DECLINED` | Provider declined synchronously — no charge; `details` has `transaction_id` and `status: "failed"` |
-| 409 | `DUPLICATE_REFERENCE` | A live (`pending`/`processing`/`completed`) payment with this `reference` exists; `details` has `existing_transaction_id`, `existing_status`, `reference`. Reuse is fine after `failed`/`cancelled`/`expired` |
-| 502 | `PROVIDER_UNAVAILABLE` / `PROVIDER_ERROR` | Provider outage or timeout — retry with the **same** `Idempotency-Key` |
+| 402 | `PAYMENT_DECLINED` | Payment declined immediately — no charge; `details` has `transaction_id` and `status: "failed"` |
+| 409 | `DUPLICATE_REFERENCE` | A live payment with this `reference` exists |
+| 502 | `PROVIDER_UNAVAILABLE` / `PROVIDER_ERROR` | Temporary upstream outage — retry with the **same** `Idempotency-Key` |
 
 Full list: [Errors](/guides/errors).
 
-[Webhooks](/guides/webhooks) · [Payment status](/guides/payments/status)
+[Webhooks](/guides/webhooks) · [Payment status](/guides/payments/status) · [Card payment](/guides/payments/create-card) · [Dynamic QR](/guides/payments/create-dynamic-qr)
 
-<Card title="API reference" icon="code" href="/api-reference/payments/create">
-  POST /api/v1/payments
+<Card title="API reference" icon="code" href="/api-reference/payments/create-mobile">
+  Create Mobile Payment
 </Card>
 
 ```bash

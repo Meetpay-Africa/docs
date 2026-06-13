@@ -1,0 +1,55 @@
+---
+title: "Payouts"
+description: "Send money to mobile wallets and bank accounts"
+---
+
+## Create a payout
+
+`POST /api/v1/payouts`
+
+`Idempotency-Key` strongly recommended — honored when present (a retry with the same key returns the existing payout). It is only mandatory on `POST /api/v1/payments`. [Idempotency](/guides/idempotency).
+
+| `channel` | Fields |
+| :--- | :--- |
+| `mobile` | `phone`, `network` |
+| `bank` | See API reference |
+
+[Check your balance](/guides/account) first. Payout events use [merchant default URLs](/guides/merchants/merchant-default-urls) (not sent on this request).
+
+```bash
+curl -X POST "https://meet.briq.tz/api/v1/payouts" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -H "Idempotency-Key: $(uuidgen)" \
+  -d '{"amount":20000,"currency":"TZS","channel":"mobile","phone":"255712345678","network":"vodacom","reference":"PAYOUT_001"}'
+```
+
+<Card title="API reference" icon="code" href="/api-reference/payouts/create">
+  POST /api/v1/payouts
+</Card>
+
+## Get a payout
+
+`GET /api/v1/payouts/{id}`
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/payouts/PAYOUT_ID" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Card title="API reference" icon="code" href="/api-reference/payouts/status">
+  GET /api/v1/payouts/{id}
+</Card>
+
+## List payouts
+
+`GET /api/v1/payouts` — query params `page` and `per_page`.
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/payouts?page=1&per_page=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Card title="API reference" icon="code" href="/api-reference/payouts/list">
+  GET /api/v1/payouts
+</Card>

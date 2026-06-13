@@ -10,7 +10,7 @@ PayGrid Developer API (`/api/v1/`). API key auth only. Dashboard handles keys, r
 [Dashboard](https://paygrid.briq.tz) → generate `sk_test_...` or `sk_live_...`.
 
 <Note>
-  Test keys (`sk_test_*`) never move real money. Creating a payment with a test key returns `403 TEST_MODE_UNAVAILABLE` unless the platform has a Selcom sandbox gateway configured — in that case test payments run against the sandbox and never touch real balances. Payouts are always blocked for test keys; read endpoints work normally.
+  Test keys (`sk_test_*`) never move real money. Creating a payment with a test key returns `403 TEST_MODE_UNAVAILABLE` unless test mode is enabled for your account — in that case test payments run in a sandbox and never touch real balances. Payouts are always blocked for test keys; read endpoints work normally.
 </Note>
 
 ## 2. Ping
@@ -53,7 +53,7 @@ curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
 
 `network` is optional — the operator is auto-detected from the phone number. When provided, use lowercase values:
 
-| Network | Provider |
+| Network | Mobile money service |
 | :--- | :--- |
 | vodacom | M-Pesa |
 | tigo | Tigo Pesa |
@@ -61,4 +61,4 @@ curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
 | halotel | Halopesa |
 | ttcl | T-Pesa |
 
-Collections: `type: "mobile"` (USSD push), `type: "card"` and `type: "dynamic-qr"` (hosted checkout via `payment_url`). See [Create payment](/guides/payments/create).
+Collections: `type: "mobile"` ([mobile payment](/guides/payments/create-mobile)), `type: "card"` ([card payment](/guides/payments/create-card)), and `type: "dynamic-qr"` ([dynamic QR](/guides/payments/create-dynamic-qr)) — all via `POST /api/v1/payments`.

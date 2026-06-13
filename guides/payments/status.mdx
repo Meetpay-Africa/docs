@@ -1,6 +1,6 @@
 ---
-title: "Payment status"
-description: "Statuses, webhook events, and polling fallback"
+title: "Track payments"
+description: "Statuses, webhook events, polling, and listing payments"
 ---
 
 Track payment outcomes via [Webhooks](/guides/webhooks) (recommended) or by polling `GET /api/v1/payments/{id}`.
@@ -18,7 +18,7 @@ Track payment outcomes via [Webhooks](/guides/webhooks) (recommended) or by poll
 | `partially_refunded` | — | Set after completion when a partial refund is applied |
 | `refunded` | — | Set after completion when the full amount has been refunded |
 
-Payments that are not completed expire roughly 30 minutes after creation (a short grace period applies), transitioning to `expired` with webhook and callback delivery.
+Payments that are not completed expire roughly 30 minutes after creation (occasionally slightly later), transitioning to `expired` with webhook and callback delivery.
 
 ## Webhook events per status
 
@@ -40,7 +40,7 @@ Full payload reference: [Webhooks](/guides/webhooks).
 
 ## Poll payment status
 
-`GET /api/v1/payments/{id}` reads from PayGrid's database — no provider round-trip, so it is safe to poll every 2–5 seconds while the customer is on the USSD prompt.
+`GET /api/v1/payments/{id}` returns the current recorded status instantly — it is safe to poll every 2–5 seconds while the customer is on the USSD prompt.
 
 <Card title="API reference" icon="code" href="/api-reference/payments/status">
   GET /api/v1/payments/{id}
@@ -78,18 +78,42 @@ Example response (fields may vary by payment type):
 }
 ```
 
-`reference` is always **your** merchant reference; the provider-side identifier is `external_id`.
+`reference` is always **your** merchant reference; `external_id` is PayGrid's upstream payment identifier — quote it in support requests.
 
 ## Force status refresh
 
-`POST /api/v1/payments/{id}/refresh` makes PayGrid query the provider and update the local record (also triggers webhooks if the status changed):
+`POST /api/v1/payments/{id}/refresh` performs a live status check and updates the payment (also triggers webhooks if the status changed):
 
 ```bash
 curl -X POST "https://meet.briq.tz/api/v1/payments/PAYMENT_ID/refresh" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
-Use sparingly — each call costs a provider round-trip and returns `502 PROVIDER_ERROR` if the provider is unreachable. For routine polling prefer `GET`; PayGrid's own background poller also refreshes pending payments automatically.
+Use sparingly — each call performs a live upstream check and returns `502 PROVIDER_ERROR` if that check is temporarily unavailable. For routine polling prefer `GET`; PayGrid also refreshes pending payments automatically.
+
+## List payments
+
+`GET /api/v1/payments` — query params `page` (default 1) and `per_page` (default 10, max 100). Responses include a `meta` block:
+
+```json
+{
+  "meta": {
+    "current_page": 1,
+    "per_page": 10,
+    "total": 42,
+    "total_pages": 5
+  }
+}
+```
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/payments?page=1&per_page=10" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Card title="API reference" icon="code" href="/api-reference/payments/list">
+  GET /api/v1/payments
+</Card>
 
 ## Integration pattern
 
@@ -98,7 +122,7 @@ POST /api/v1/payments  →  status: pending
         ↓
 Customer pays (USSD / QR / card)
         ↓
-Provider notifies PayGrid  →  status transition  →  your webhook_url
+PayGrid confirms the payment  →  status transition  →  your webhook_url
         ↓
 payment.completed  →  fulfill order
 ```

@@ -25,6 +25,20 @@
             ]
           },
           {
+            "group": "Payments",
+            "pages": [
+              {
+                "group": "Create payment",
+                "pages": [
+                  "guides/payments/create-mobile",
+                  "guides/payments/create-card",
+                  "guides/payments/create-dynamic-qr"
+                ]
+              },
+              "guides/payments/status"
+            ]
+          },
+          {
             "group": "Webhooks",
             "pages": [
               "guides/webhooks",
@@ -32,33 +46,10 @@
             ]
           },
           {
-            "group": "Connection",
+            "group": "Payouts & account",
             "pages": [
-              "guides/ping"
-            ]
-          },
-          {
-            "group": "Account",
-            "pages": [
-              "guides/merchants/get-profile",
-              "guides/merchants/get-balance"
-            ]
-          },
-          {
-            "group": "Payments",
-            "pages": [
-              "guides/payments/create",
-              "guides/payments/status",
-              "guides/payments/get",
-              "guides/payments/list"
-            ]
-          },
-          {
-            "group": "Payouts",
-            "pages": [
-              "guides/payouts/create",
-              "guides/payouts/get",
-              "guides/payouts/list"
+              "guides/payouts",
+              "guides/account"
             ]
           }
         ]
@@ -69,12 +60,7 @@
           {
             "group": "Overview",
             "pages": [
-              "api-reference/introduction"
-            ]
-          },
-          {
-            "group": "Connection",
-            "pages": [
+              "api-reference/introduction",
               "api-reference/ping"
             ]
           },
@@ -89,7 +75,14 @@
           {
             "group": "Payments",
             "pages": [
-              "api-reference/payments/create",
+              {
+                "group": "Create payment",
+                "pages": [
+                  "api-reference/payments/create-mobile",
+                  "api-reference/payments/create-card",
+                  "api-reference/payments/create-dynamic-qr"
+                ]
+              },
               "api-reference/payments/status",
               "api-reference/payments/list",
               "api-reference/payments/refresh",
@@ -117,6 +110,18 @@
       ]
     }
   },
+  "redirects": [
+    { "source": "/guides/ping", "destination": "/quickstart" },
+    { "source": "/guides/payments/create", "destination": "/guides/payments/create-mobile" },
+    { "source": "/api-reference/payments/create", "destination": "/api-reference/payments/create-mobile" },
+    { "source": "/guides/payments/get", "destination": "/guides/payments/status" },
+    { "source": "/guides/payments/list", "destination": "/guides/payments/status" },
+    { "source": "/guides/payouts/create", "destination": "/guides/payouts" },
+    { "source": "/guides/payouts/get", "destination": "/guides/payouts" },
+    { "source": "/guides/payouts/list", "destination": "/guides/payouts" },
+    { "source": "/guides/merchants/get-profile", "destination": "/guides/account" },
+    { "source": "/guides/merchants/get-balance", "destination": "/guides/account" }
+  ],
   "logo": {
     "light": "/logo/light.png",
     "dark": "/logo/dark.png"

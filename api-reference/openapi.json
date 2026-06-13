@@ -203,7 +203,17 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/CreatePaymentRequest"
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateMobilePaymentRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateCardPaymentRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CreateDynamicQrPaymentRequest"
+                  }
+                ]
               },
               "examples": {
                 "mobile": {
@@ -353,7 +363,7 @@
             }
           },
           "402": {
-            "description": "Payment declined synchronously by the provider (PAYMENT_DECLINED). The customer was not charged. details contains transaction_id, status \"failed\", and reference. Insufficient customer funds also return 402 (INSUFFICIENT_FUNDS).",
+            "description": "Payment declined immediately (PAYMENT_DECLINED). The customer was not charged. details contains transaction_id, status \"failed\", and reference. Insufficient customer funds also return 402 (INSUFFICIENT_FUNDS).",
             "content": {
               "application/json": {
                 "schema": {
@@ -393,7 +403,7 @@
             }
           },
           "502": {
-            "description": "Provider outage or timeout (PROVIDER_UNAVAILABLE — safe to retry with backoff, or PROVIDER_ERROR)",
+            "description": "Temporary upstream outage or timeout (PROVIDER_UNAVAILABLE — safe to retry with backoff, or PROVIDER_ERROR)",
             "content": {
               "application/json": {
                 "schema": {
@@ -408,7 +418,7 @@
     "/api/v1/payments/{id}": {
       "get": {
         "summary": "Get Payment Status",
-        "description": "Retrieves the status and details of a specific payment from PayGrid's database (no provider round-trip — safe to poll).",
+        "description": "Retrieves the status and details of a specific payment instantly from PayGrid (safe to poll).",
         "parameters": [
           {
             "name": "id",
@@ -469,7 +479,7 @@
     "/api/v1/payments/{id}/refresh": {
       "post": {
         "summary": "Refresh Payment Status",
-        "description": "Forces PayGrid to query the payment provider for the latest status and update the local record. Triggers webhooks/callbacks if the status changed. Costs a provider round-trip — use sparingly; for routine polling prefer GET /api/v1/payments/{id}.",
+        "description": "Performs a live status check and updates the payment. Triggers webhooks/callbacks if the status changed. Use sparingly; for routine polling prefer GET /api/v1/payments/{id}.",
         "parameters": [
           {
             "name": "id",
@@ -525,7 +535,7 @@
             }
           },
           "502": {
-            "description": "Payment provider temporarily unavailable (PROVIDER_ERROR)",
+            "description": "Live status check temporarily unavailable (PROVIDER_ERROR)",
             "content": {
               "application/json": {
                 "schema": {
@@ -914,8 +924,253 @@
           }
         }
       },
+      "CardCustomer": {
+        "type": "object",
+        "required": [
+          "firstname",
+          "lastname",
+          "email",
+          "address",
+          "city",
+          "state",
+          "postcode",
+          "country"
+        ],
+        "properties": {
+          "firstname": {
+            "type": "string"
+          },
+          "lastname": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "address": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "state": {
+            "type": "string"
+          },
+          "postcode": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateMobilePaymentRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "type",
+          "phone",
+          "customer"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount the customer is charged. Minimum 500 TZS when currency is TZS."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "TZS",
+              "USD",
+              "KES",
+              "UGX"
+            ],
+            "default": "TZS"
+          },
+          "type": {
+            "type": "string",
+            "const": "mobile",
+            "description": "Mobile money USSD push payment."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Customer phone number. For TZS, accepted formats: 0712345678, 712345678, 255712345678, +255712345678 — normalized to 255XXXXXXXXX and must be a valid Tanzanian mobile number (2556/2557 prefix). Invalid numbers return 400 VALIDATION_ERROR."
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "vodacom",
+              "tigo",
+              "airtel",
+              "halotel",
+              "ttcl"
+            ],
+            "description": "Optional — the mobile network operator is auto-detected from the phone number. Aliases accepted: mpesa (vodacom), mixx (tigo). Invalid values return 400 VALIDATION_ERROR."
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "reference": {
+            "type": "string",
+            "description": "Your internal reference. A reference with an existing live (pending/processing/completed) payment is rejected with 409 DUPLICATE_REFERENCE."
+          },
+          "webhook_url": {
+            "type": "string",
+            "description": "Per-payment webhook URL. Overrides merchant webhook_url when set."
+          },
+          "callback_url": {
+            "type": "string",
+            "description": "Per-payment callback URL for terminal status. Overrides merchant callback_url when set."
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "CreateCardPaymentRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "type",
+          "phone",
+          "customer",
+          "redirect_url",
+          "cancel_url"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount the customer is charged. Must be greater than 0."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "TZS",
+              "USD",
+              "KES",
+              "UGX"
+            ],
+            "default": "TZS"
+          },
+          "type": {
+            "type": "string",
+            "const": "card",
+            "description": "Hosted card checkout — response includes payment_url."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Customer phone number. Required but not strictly validated to Tanzanian format (unlike mobile payments)."
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "vodacom",
+              "tigo",
+              "airtel",
+              "halotel",
+              "ttcl"
+            ],
+            "description": "Optional mobile network operator."
+          },
+          "customer": {
+            "$ref": "#/components/schemas/CardCustomer"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "webhook_url": {
+            "type": "string"
+          },
+          "callback_url": {
+            "type": "string"
+          },
+          "redirect_url": {
+            "type": "string",
+            "description": "Required — where the customer is sent after successful checkout."
+          },
+          "cancel_url": {
+            "type": "string",
+            "description": "Required — where the customer is sent if they cancel checkout."
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "CreateDynamicQrPaymentRequest": {
+        "type": "object",
+        "required": [
+          "amount",
+          "currency",
+          "type",
+          "phone",
+          "customer"
+        ],
+        "properties": {
+          "amount": {
+            "type": "number",
+            "description": "Amount the customer is charged. Must be greater than 0."
+          },
+          "currency": {
+            "type": "string",
+            "enum": [
+              "TZS",
+              "USD",
+              "KES",
+              "UGX"
+            ],
+            "default": "TZS"
+          },
+          "type": {
+            "type": "string",
+            "const": "dynamic-qr",
+            "description": "Dynamic QR hosted checkout — response includes payment_url and qr_code."
+          },
+          "phone": {
+            "type": "string",
+            "description": "Customer phone number. Required for notifications and receipts; not strictly validated to Tanzanian format."
+          },
+          "network": {
+            "type": "string",
+            "enum": [
+              "vodacom",
+              "tigo",
+              "airtel",
+              "halotel",
+              "ttcl"
+            ],
+            "description": "Optional mobile network operator."
+          },
+          "customer": {
+            "$ref": "#/components/schemas/Customer"
+          },
+          "reference": {
+            "type": "string"
+          },
+          "webhook_url": {
+            "type": "string"
+          },
+          "callback_url": {
+            "type": "string"
+          },
+          "redirect_url": {
+            "type": "string",
+            "description": "Optional — forwarded to the hosted checkout provider when set."
+          },
+          "cancel_url": {
+            "type": "string",
+            "description": "Optional — forwarded to the hosted checkout provider when set."
+          },
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
       "CreatePaymentRequest": {
         "type": "object",
+        "description": "Unified payment request — use CreateMobilePaymentRequest, CreateCardPaymentRequest, or CreateDynamicQrPaymentRequest for per-method contracts.",
         "required": [
           "amount",
           "currency",
@@ -948,7 +1203,7 @@
           },
           "phone": {
             "type": "string",
-            "description": "Customer phone number. Required for all payment types. For TZS, accepted formats: 0712345678, 712345678, 255712345678, +255712345678 — normalized to 255XXXXXXXXX and must be a valid Tanzanian mobile number (2556/2557 prefix). Invalid numbers return 400 VALIDATION_ERROR."
+            "description": "Customer phone number. Required for all payment types. Strict TZS normalization and validation applies only when type is mobile."
           },
           "network": {
             "type": "string",
@@ -991,7 +1246,7 @@
       },
       "Payment": {
         "type": "object",
-        "description": "Payment record returned by GET /payments/{id}, GET /payments, POST /payments/{id}/refresh, and idempotent replays. reference is YOUR merchant reference; provider identifiers are in external_id.",
+        "description": "Payment record returned by GET /payments/{id}, GET /payments, POST /payments/{id}/refresh, and idempotent replays. reference is YOUR merchant reference; the upstream payment identifier is external_id.",
         "properties": {
           "id": {
             "type": "string",
@@ -1003,7 +1258,7 @@
           },
           "external_id": {
             "type": "string",
-            "description": "Provider-side reference used for status lookups"
+            "description": "Upstream payment identifier — quote it in support requests"
           },
           "amount": {
             "type": "number",
@@ -1052,11 +1307,11 @@
           },
           "payment_url": {
             "type": "string",
-            "description": "Hosted checkout URL for card and dynamic-qr payments; empty for mobile"
+            "description": "Hosted checkout URL for card and dynamic-qr payments; omitted for mobile"
           },
           "qr_code": {
             "type": "string",
-            "description": "QR payload for dynamic-qr payments"
+            "description": "QR payload for dynamic-qr payments; falls back to payment_url when the provider does not return a separate QR string"
           },
           "created_at": {
             "type": "string",
@@ -1071,7 +1326,7 @@
       },
       "PaymentResponse": {
         "type": "object",
-        "description": "Payment creation response (201). reference is YOUR merchant reference; provider identifiers are exposed as provider_reference and external_id.",
+        "description": "Payment creation response (201). reference is YOUR merchant reference; upstream payment identifiers are exposed as provider_reference and external_id.",
         "properties": {
           "id": {
             "type": "string",
@@ -1083,11 +1338,11 @@
           },
           "provider_reference": {
             "type": "string",
-            "description": "Provider reference returned at creation"
+            "description": "Upstream payment reference returned at creation"
           },
           "external_id": {
             "type": "string",
-            "description": "Provider-side reference used for status lookups"
+            "description": "Upstream payment identifier — quote it in support requests"
           },
           "amount": {
             "type": "number"
@@ -1129,13 +1384,15 @@
           },
           "payment_url": {
             "type": "string",
-            "description": "Hosted checkout URL — present for card and dynamic-qr"
+            "description": "Hosted checkout URL — returned for card and dynamic-qr; omitted for mobile"
           },
           "qr_code": {
-            "type": "string"
+            "type": "string",
+            "description": "QR payload for dynamic-qr payments; falls back to payment_url when the provider does not return a separate QR string"
           },
           "payment_token": {
-            "type": "string"
+            "type": "string",
+            "description": "Optional hosted-checkout token from the provider; may be set for card and dynamic-qr"
           },
           "created_at": {
             "type": "string",
@@ -1162,7 +1419,7 @@
           },
           "actor_type": {
             "type": "string",
-            "description": "Who triggered the event: system, psp, poller, merchant"
+            "description": "Source of the event: merchant for your actions; system, psp, poller for PayGrid-side updates"
           },
           "created_at": {
             "type": "string",

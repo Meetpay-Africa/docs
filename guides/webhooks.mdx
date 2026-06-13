@@ -26,7 +26,7 @@ Both use the same HMAC signing. Most integrations only need `webhook_url`.
 
 ## Payment status lifecycle
 
-After `POST /api/v1/payments`, a payment moves through normalized statuses. PayGrid maps provider-specific values (for example Snippe/Selcom) into these states before delivering webhooks.
+After `POST /api/v1/payments`, a payment moves through a fixed set of normalized statuses — these are the only values you will ever see in webhooks and API responses, regardless of payment method.
 
 ```mermaid
 stateDiagram-v2
@@ -44,7 +44,7 @@ stateDiagram-v2
 | `pending` | No | Created; awaiting customer action (USSD push, QR scan, card checkout) |
 | `processing` | No | Rare/legacy intermediate state — not a standard step for mobile payments |
 | `completed` | Yes | Payment successful; merchant balance credited |
-| `failed` | Yes | Payment failed at the provider |
+| `failed` | Yes | Payment failed (declined or rejected) |
 | `cancelled` | Yes | Payment cancelled before completion |
 | `expired` | Yes | Payment not completed within ~30 minutes of creation — PayGrid enforces this expiry and delivers `payment.expired` |
 | `partially_refunded` | — | One or more partial refunds applied after completion (no webhook emitted) |
@@ -52,7 +52,7 @@ stateDiagram-v2
 
 Terminal statuses never regress. Once `completed`, `failed`, `cancelled`, or `expired`, the payment will not return to `pending`.
 
-Expiry is enforced by PayGrid: a payment that is still `pending` roughly 30 minutes after creation transitions to `expired` (a ~2-minute grace period applies, and if the provider is unreachable the transition can take up to ~60 minutes total). The expiry checks the provider one last time first, so a payment that actually completed late is honored.
+Expiry is enforced by PayGrid: a payment that is still `pending` roughly 30 minutes after creation transitions to `expired` (occasionally slightly later). The payment's final status is verified one last time before expiring, so a payment that actually completed late is honored as `completed`.
 
 ## Payment webhook events
 
@@ -62,7 +62,7 @@ Webhooks fire on every status **transition** — not at creation time. There is 
 | :--- | :--- | :--- | :--- |
 | `payment.processing` | `processing` | `pending` | Rare — legacy intermediate state; not a standard step for mobile payments |
 | `payment.completed` | `completed` | `pending` | Payment captured successfully |
-| `payment.failed` | `failed` | `pending` | Provider reported failure |
+| `payment.failed` | `failed` | `pending` | Payment was declined or rejected |
 | `payment.cancelled` | `cancelled` | `pending` | Payment cancelled |
 | `payment.expired` | `expired` | `pending` | Payment not completed within ~30 minutes of creation |
 
@@ -118,7 +118,7 @@ Sent to `webhook_url` on each status change:
 | `data.status` | string | New status after this transition |
 | `data.previous_status` | string | Status before this transition |
 | `data.payment_type` | string | `mobile`, `card`, or `dynamic-qr` |
-| `data.provider_reference` | string | Provider external reference |
+| `data.provider_reference` | string | Upstream payment reference — quote it in support requests |
 | `data.failure_reason` | string \| null | Set on `payment.failed` when available |
 | `data.completed_at` | datetime \| null | Set for terminal statuses when known |
 | `metadata` | object | Your original `metadata` echoed back |
@@ -232,8 +232,8 @@ function verify(signatureHeader, timestamp, rawBody, signingKey) {
 
 | Scenario | Behavior |
 | :--- | :--- |
-| Your endpoint returns non-2xx or times out | PayGrid retries via background worker |
-| Retries exhausted | Delivery moves to dead-letter queue; merchant notified |
+| Your endpoint returns non-2xx or times out | PayGrid retries automatically with increasing delays |
+| Retries exhausted | Delivery stops and you are notified — recover via polling |
 | Missed webhook | `GET /api/v1/payments/{id}` or `POST /api/v1/payments/{id}/refresh` |
 
 See [Get payment status](/guides/payments/status) for polling and status field reference.

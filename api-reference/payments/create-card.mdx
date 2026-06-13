@@ -1,0 +1,53 @@
+---
+title: 'Create Card Payment'
+description: 'POST /api/v1/payments with type: card'
+openapi: 'POST /api/v1/payments'
+---
+
+`POST /api/v1/payments` with `type: "card"`.
+
+`Idempotency-Key` is **required** — requests without it return `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
+
+Returns `201` with `status: "pending"` and a `payment_url` for hosted card checkout, or `200` when replaying an existing `Idempotency-Key`.
+
+## Required fields
+
+| Field | Notes |
+| :--- | :--- |
+| `amount`, `currency`, `type`, `customer`, `phone` | `type` must be `"card"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
+| `customer` | `firstname`, `lastname`, `email`, `address`, `city`, `state`, `postcode`, `country` |
+| `redirect_url` | Where the customer is sent after successful checkout |
+| `cancel_url` | Where the customer is sent if they cancel checkout |
+
+## Optional fields
+
+| Field | Notes |
+| :--- | :--- |
+| `network` | Mobile network operator |
+| `reference`, `metadata` | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
+| `webhook_url`, `callback_url` | Override merchant defaults |
+
+<Note>Phone is required but is **not** strictly validated to Tanzanian format (unlike mobile payments).</Note>
+
+## Response
+
+| Field | Value |
+| :--- | :--- |
+| `status` | `pending` |
+| `payment_url` | Hosted checkout URL — redirect the customer's browser here |
+| `qr_code` | Omitted |
+| `payment_token` | May be set by the provider |
+
+Redirect the customer to `payment_url`. **Trust the webhook over the redirect** — the redirect is a UX cue; [webhooks](/guides/webhooks) are the source of truth.
+
+Unfinished payments expire roughly **30 minutes** after creation (PayGrid TTL). The provider-hosted page may allow up to 60 minutes, but PayGrid marks the payment `expired` at ~30 min.
+
+## Errors
+
+| HTTP | `error_code` | When |
+| :--- | :--- | :--- |
+| 400 | `VALIDATION_ERROR` | Missing billing address, `redirect_url`, or `cancel_url` |
+
+Full list: [Errors](/guides/errors).
+
+<Note>In Try It, select the **Card Payment (hosted checkout)** request example.</Note>

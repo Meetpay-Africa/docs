@@ -28,7 +28,7 @@ All errors use the standard envelope. `error_code` is stable and machine-readabl
 | 400 | `VALIDATION_ERROR` | Invalid body or params — bad phone, unsupported currency, invalid network, amount below 500 TZS (TZS mobile), `Idempotency-Key` over 255 chars. `details` lists `{field, message}` |
 | 400 | `IDEMPOTENCY_KEY_REQUIRED` | `POST /api/v1/payments` called without the `Idempotency-Key` header |
 | 400 | `INVALID_ID` | Path `{id}` is not a valid UUID |
-| 400 | `INVALID_REQUEST` | Provider rejected the request — missing/malformed fields, check your integration |
+| 400 | `INVALID_REQUEST` | Request rejected — missing or malformed fields; check your integration |
 | 400 | `PAYMENT_FAILED` | Payment creation failed for an unclassified reason |
 
 ## Auth and access
@@ -39,29 +39,29 @@ All errors use the standard envelope. `error_code` is stable and machine-readabl
 | 401 | `MERCHANT_NOT_FOUND` | Merchant account for this key not found |
 | 403 | `TEST_MODE_UNAVAILABLE` | `sk_test_*` key on a money-moving endpoint with no sandbox gateway configured. Test keys never move real money; payouts are always blocked for test keys |
 | 403 | `RISK_CHECK_FAILED` | Blocked by your merchant risk policy |
-| 403 | `TRANSACTION_BLOCKED` | Blocked by provider fraud/AML rules (reason not disclosed) |
+| 403 | `TRANSACTION_BLOCKED` | Blocked by fraud/AML screening (reason not disclosed) |
 
 ## Payment outcomes
 
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
-| 402 | `PAYMENT_DECLINED` | Provider declined synchronously — customer **not** charged. `details` has `transaction_id`, `status: "failed"`, `reference`; the failed payment stays queryable by ID |
+| 402 | `PAYMENT_DECLINED` | Payment declined immediately — customer **not** charged. `details` has `transaction_id`, `status: "failed"`, `reference`; the failed payment stays queryable by ID |
 | 402 | `INSUFFICIENT_FUNDS` | Customer's wallet has insufficient funds |
 | 409 | `DUPLICATE_REFERENCE` | A live (`pending`/`processing`/`completed`) payment with this `reference` exists. Reuse allowed after `failed`/`cancelled`/`expired` |
 | 409 | `CONFLICT` | Resource state conflict (e.g. idempotency key collision outside the replay path) |
-| 422 | `INVALID_PAYMENT_DETAILS` | Customer payment details rejected by the provider |
-| 422 | `TRANSACTION_LIMIT_EXCEEDED` | Amount exceeds a provider per-transaction limit |
+| 422 | `INVALID_PAYMENT_DETAILS` | Customer payment details were rejected |
+| 422 | `TRANSACTION_LIMIT_EXCEEDED` | Amount exceeds a per-transaction limit |
 
-## Not found, rate limits, server, provider
+## Not found, rate limits, server, upstream
 
 | HTTP | `error_code` | Meaning |
 | :--- | :--- | :--- |
 | 404 | `RESOURCE_NOT_FOUND` | Payment not found (or belongs to another merchant) |
 | 429 | `RATE_LIMIT_EXCEEDED` | Over 60 requests/minute per API key — check `X-RateLimit-Reset`, then retry |
 | 500 | `INTERNAL_ERROR` | Unexpected server-side failure |
-| 500 | `FEE_CALCULATION_ERROR` | Fee engine could not compute the transaction fee |
-| 502 | `PROVIDER_UNAVAILABLE` | Provider outage/timeout — **retry with backoff**, reusing the same `Idempotency-Key` |
-| 502 | `PROVIDER_ERROR` | Unclassified provider error — not automatically retryable |
+| 500 | `FEE_CALCULATION_ERROR` | Transaction fee could not be computed |
+| 502 | `PROVIDER_UNAVAILABLE` | Temporary upstream outage/timeout — **retry with backoff**, reusing the same `Idempotency-Key` |
+| 502 | `PROVIDER_ERROR` | Unclassified upstream error — not automatically retryable |
 
 ## Retry guidance
 
@@ -69,4 +69,4 @@ All errors use the standard envelope. `error_code` is stable and machine-readabl
 - **Fix the request first**: `400`, `401`, `403`, `404`, `422`.
 - **Don't retry as-is**: `402 PAYMENT_DECLINED` (ask the customer to use another method), `409 DUPLICATE_REFERENCE` (use a new `reference`, or check `details.existing_transaction_id`).
 
-[Create payment](/guides/payments/create) · [Idempotency](/guides/idempotency)
+[Create mobile payment](/guides/payments/create-mobile) · [Create card payment](/guides/payments/create-card) · [Create dynamic QR](/guides/payments/create-dynamic-qr) · [Idempotency](/guides/idempotency)

@@ -1,0 +1,34 @@
+---
+title: "Account & balance"
+description: "Merchant profile and balance"
+---
+
+## Get profile
+
+`GET /api/v1/merchants/me`
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/merchants/me" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Card title="API reference" icon="code" href="/api-reference/merchants/profile">
+  GET /api/v1/merchants/me
+</Card>
+
+Update your profile (including default webhook/callback URLs) with `PUT /api/v1/merchants/me` — see [Merchant default URLs](/guides/merchants/merchant-default-urls).
+
+## Get balance
+
+`GET /api/v1/merchants/me/balance`
+
+Check the available balance before [creating a payout](/guides/payouts).
+
+```bash
+curl -X GET "https://meet.briq.tz/api/v1/merchants/me/balance" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+```
+
+<Card title="API reference" icon="code" href="/api-reference/merchants/balance">
+  GET /api/v1/merchants/me/balance
+</Card>

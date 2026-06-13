@@ -1,0 +1,56 @@
+---
+title: 'Create Mobile Payment'
+description: 'POST /api/v1/payments with type: mobile'
+openapi: 'POST /api/v1/payments'
+---
+
+`POST /api/v1/payments` with `type: "mobile"`.
+
+`Idempotency-Key` is **required** — requests without it return `400 IDEMPOTENCY_KEY_REQUIRED`. [Idempotency](/guides/idempotency).
+
+Returns `201` with `status: "pending"` and a USSD push to the customer's phone, or `200` when replaying an existing `Idempotency-Key`.
+
+## Required fields
+
+| Field | Notes |
+| :--- | :--- |
+| `amount`, `currency`, `type`, `customer`, `phone` | `type` must be `"mobile"`. Currencies: `TZS`, `USD`, `KES`, `UGX` |
+| `customer` | `firstname`, `lastname`, `email` |
+| `phone` | TZS numbers are normalized and validated — see below |
+
+## Optional fields
+
+| Field | Notes |
+| :--- | :--- |
+| `network` | Auto-detected from phone; aliases `mpesa` → `vodacom`, `mixx` → `tigo` |
+| `reference`, `metadata` | Duplicate live `reference` → `409 DUPLICATE_REFERENCE` |
+| `webhook_url`, `callback_url` | Override merchant defaults |
+
+## Phone formats (TZS)
+
+These all normalize to `255712345678`: `0712345678`, `712345678`, `255712345678`, `+255712345678`. After normalization the number must be a valid Tanzanian mobile (`255` + `6`/`7` + 8 digits) — anything else returns `400 VALIDATION_ERROR`.
+
+## Minimum amount
+
+**500 TZS** minimum when `currency` is `TZS`.
+
+## Response
+
+| Field | Value |
+| :--- | :--- |
+| `status` | `pending` |
+| `payment_url` | Omitted |
+| `qr_code` | Omitted |
+
+The customer receives a USSD prompt and authorizes with their wallet PIN. Unfinished payments expire roughly **30 minutes** after creation.
+
+## Errors
+
+| HTTP | `error_code` | When |
+| :--- | :--- | :--- |
+| 400 | `VALIDATION_ERROR` | Invalid phone, network, currency, or amount below 500 TZS |
+| 402 | `PAYMENT_DECLINED` | Synchronous provider decline — `details.transaction_id` in response |
+
+Full list: [Errors](/guides/errors).
+
+<Note>In Try It, select the **Mobile Money** or **Mobile Money (explicit network)** request example.</Note>
