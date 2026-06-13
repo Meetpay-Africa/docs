@@ -18,12 +18,4 @@ Not covered in this reference (manage these from the dashboard): API keys, detai
 
 Rate limit: 60 requests/minute per API key (`X-RateLimit-*` headers on every response; `429 RATE_LIMIT_EXCEEDED` when exceeded). All responses use the envelope `{status, code, message, data, meta?}` — errors add `error_code` and optional `details`. See [Errors](/guides/errors).
 
-<Card
-  title="OpenAPI"
-  icon="code"
-  href="/api-reference/openapi.json"
->
-  openapi.json
-</Card>
-
 > **401 in Try It:** Match server to key environment. Enter raw key only (no `Bearer ` prefix in playground).
